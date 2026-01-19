@@ -1,0 +1,24 @@
+# src/ms-notifications/ms-notifications.graphql
+
+type Notification {
+  id: ID!
+  userId: String! # ou ID! selon ton choix
+  content: String!
+  isRead: Boolean!
+  createdAt: String!
+}
+
+# C'est ce bloc qu'il te manque ou qui est incomplet :
+type Query {
+  getAllNotifications: [Notification]!
+}
+
+type Mutation {
+  createNotification(userId: ID!, content: String!): Notification!
+} 
+
+# (Et ton extension User si tu l'as déjà mise)
+type User @key(fields: "id") {
+  id: ID!
+  notifications: [Notification]
+}

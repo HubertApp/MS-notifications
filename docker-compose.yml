@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  ms-notifications:
+    build: .
+    container_name: ms-notifications-container
+    ports:
+      - "3001:3001" # Ton port API
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy # On attend que Rabbit soit "Healthy"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-container
+    ports:
+      - "5672:5672"   # Port communication
+      - "15672:15672" # Port interface web
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app-network:
+    driver: bridge
