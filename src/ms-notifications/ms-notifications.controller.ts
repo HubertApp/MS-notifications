@@ -12,8 +12,8 @@ export class NotificationsController {
     console.log(`⚡️ Event Reçu via RabbitMQ :`, data);
     
     // Exemple : Créer la notif automatiquement
-    if (data.userId && data.email) {
-        this.notificationsService.create(data.userId, `Bienvenue ${data.email} !`);
+    if (data.user_id && data.email) {
+        this.notificationsService.create(data.user_id, `Bienvenue ${data.email} !`);
     }
   }
 }
