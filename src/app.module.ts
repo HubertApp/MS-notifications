@@ -14,4 +14,4 @@ import { NotificationsModule } from './ms-notifications/ms-notifications.module'
     NotificationsModule,
   ],
 })
-export class AppModule {} // <--- C'est ce nom que main.ts cherche !
+export class AppModule {}
