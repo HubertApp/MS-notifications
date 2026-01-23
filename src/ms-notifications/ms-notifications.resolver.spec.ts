@@ -39,7 +39,7 @@ describe('NotificationsResolver', () => {
   describe('create', () => {
     it('shouldCallServiceCreateWithCorrectArguments', () => {
       // ARRANGE
-      const userId = '123';
+      const userId = '1234';
       const content = 'Test Content';
 
       // ACT
