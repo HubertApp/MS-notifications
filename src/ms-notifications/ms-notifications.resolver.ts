@@ -4,7 +4,6 @@ import { NotificationsService } from './ms-notifications.service'; // Import mis
 
 @Resolver('User')
 export class UsersResolver {
-  // On injecte le service avec son nouveau nom
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @ResolveField('notifications')
@@ -14,7 +13,7 @@ export class UsersResolver {
 }
 
 @Resolver('Notification')
-export class NotificationsResolver { // Nom de classe mis à jour
+export class NotificationsResolver {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Query('getAllNotifications')

@@ -11,7 +11,7 @@ async function bootstrap() {
       urls: ['amqp://rabbitmq:5672'],
       queue: 'notifications_queue',
       queueOptions: {
-        durable: false,
+        durable: true,
       },
     },
   });

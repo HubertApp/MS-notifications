@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class NotificationsService {
-  // Voici notre "Base de données" temporaire
+  
   private readonly notifications: Notification[] = [];
 
   create(userId: string, content: string): Notification {
