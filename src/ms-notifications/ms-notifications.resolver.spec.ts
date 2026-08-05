@@ -1,29 +1,35 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException } from '@nestjs/common';
 import { NotificationsResolver } from './ms-notifications.resolver';
 import { NotificationsService } from './ms-notifications.service';
+import { AuthenticatedUser } from '../common/guards/federated-auth.guard';
 
 describe('NotificationsResolver', () => {
   let resolver: NotificationsResolver;
   let service: NotificationsService;
 
-  // MOCK : On crée un faux service. 
-  // On ne met que les méthodes utilisées par le Resolver.
   const mockNotificationsService = {
-    findAll: jest.fn(() => ['mock-notif']), // Retourne une fausse donnée simple
-    create: jest.fn((userId, content) => ({ 
-      id: 'mock-id', 
-      userId, 
-      content 
+    findForUser: jest.fn((userId: string) => [{ id: 'mock-notif', userId }]),
+    create: jest.fn((params: any) => ({
+      id: 'mock-id',
+      ...params,
     })),
   };
 
+  const asUser = (userId: string, role = 'USER'): AuthenticatedUser => ({
+    userId,
+    role,
+  });
+
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationsResolver,
         {
-          provide: NotificationsService, // Quand Nest demande le Service...
-          useValue: mockNotificationsService, // ... on donne le Mock
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
@@ -36,33 +42,55 @@ describe('NotificationsResolver', () => {
     expect(resolver).toBeDefined();
   });
 
-  describe('create', () => {
-    it('shouldCallServiceCreateWithCorrectArguments', () => {
-      // ARRANGE
-      const userId = '1234';
-      const content = 'Test Content';
+  describe('findAll (getAllNotifications)', () => {
+    it('shouldOnlyReturnNotificationsForTheAuthenticatedCaller', () => {
+      const user = asUser('user-123');
 
-      // ACT
-      const result = resolver.create(userId, content);
+      const result = resolver.findAll(user);
 
-      // ASSERT
-      // 1. On vérifie le retour
-      expect(result).toEqual({ id: 'mock-id', userId, content });
-      
-      // 2. On vérifie que le "guichetier" a bien appelé le "cerveau"
-      expect(service.create).toHaveBeenCalledWith(userId, content);
-      expect(service.create).toHaveBeenCalledTimes(1);
+      expect(service.findForUser).toHaveBeenCalledWith('user-123');
+      expect(result).toEqual([{ id: 'mock-notif', userId: 'user-123' }]);
     });
   });
 
-  describe('findAll', () => {
-    it('shouldReturnArrayFromService', () => {
-      // ACT
-      const result = resolver.findAll();
+  describe('create', () => {
+    it('shouldAllowAUserToCreateANotificationForThemselves', () => {
+      const user = asUser('user-123');
 
-      // ASSERT
-      expect(result).toEqual(['mock-notif']);
-      expect(service.findAll).toHaveBeenCalled();
+      const result = resolver.create('user-123', 'Test Content', user);
+
+      expect(service.create).toHaveBeenCalledWith({
+        userId: 'user-123',
+        content: 'Test Content',
+        type: 'MANUAL',
+        source: 'graphql:createNotification',
+        triggeredBy: 'user-123',
+      });
+      expect(result).toBeDefined();
+    });
+
+    it('shouldRejectAUserCreatingANotificationForSomeoneElse', () => {
+      const user = asUser('user-123');
+
+      expect(() => resolver.create('someone-else', 'Test Content', user)).toThrow(
+        ForbiddenException,
+      );
+      expect(service.create).not.toHaveBeenCalled();
+    });
+
+    it('shouldAllowAServiceRoleToCreateANotificationForAnyone', () => {
+      const serviceUser = asUser('ms-admin', 'SERVICE');
+
+      const result = resolver.create('someone-else', 'Test Content', serviceUser);
+
+      expect(service.create).toHaveBeenCalledWith({
+        userId: 'someone-else',
+        content: 'Test Content',
+        type: 'SERVICE',
+        source: 'graphql:createNotification',
+        triggeredBy: 'ms-admin',
+      });
+      expect(result).toBeDefined();
     });
   });
 });

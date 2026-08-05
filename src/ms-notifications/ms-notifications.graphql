@@ -2,19 +2,24 @@
 
 type Notification {
   id: ID!
-  userId: String! # ou ID! selon ton choix
+  userId: String!
   content: String!
+  type: String!
+  source: String!
+  triggeredBy: String
   isRead: Boolean!
   createdAt: String!
 }
 
+# Renvoie uniquement les notifications de l'appelant authentifié (nom
+# conservé pour compatibilité, voir le resolver).
 type Query {
   getAllNotifications: [Notification]!
 }
 
 type Mutation {
   createNotification(userId: ID!, content: String!): Notification!
-} 
+}
 
 type User @key(fields: "id") {
   id: ID!

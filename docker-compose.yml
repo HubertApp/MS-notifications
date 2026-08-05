@@ -8,11 +8,14 @@ services:
       - "3001:3001" # Ton port API
     environment:
       - NODE_ENV=production
+      - MONGO_URL=mongodb://mongodb:27017/hubertapp_notifications
     networks:
       - app-network
     depends_on:
       rabbitmq:
         condition: service_healthy # On attend que Rabbit soit "Healthy"
+      mongodb:
+        condition: service_started
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -27,6 +30,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb-notifications-container
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_notifications_data:/data/db
+    networks:
+      - app-network
+
+volumes:
+  mongo_notifications_data:
 
 networks:
   app-network:
