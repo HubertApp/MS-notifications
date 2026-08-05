@@ -9,6 +9,10 @@ services:
     environment:
       - NODE_ENV=production
       - MONGO_URL=mongodb://mongodb:27017/hubertapp_notifications
+      # Canal e-mail : facultatif, voir .env.example. Non fourni ici, à
+      # renseigner via un fichier .env local si besoin (env_file plus bas).
+    env_file:
+      - .env
     networks:
       - app-network
     depends_on:

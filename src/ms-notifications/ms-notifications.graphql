@@ -17,8 +17,12 @@ type Query {
   getAllNotifications: [Notification]!
 }
 
+# channels : canaux de livraison additionnels demandés en plus de la
+# persistance in-app (toujours effectuée), ex: ["EMAIL"]. Pas d'argument
+# `email` : l'adresse est toujours résolue côté serveur, jamais fournie par
+# l'appelant (voir NotificationDispatcherService / UserLookupService).
 type Mutation {
-  createNotification(userId: ID!, content: String!): Notification!
+  createNotification(userId: ID!, content: String!, channels: [String!]): Notification!
 }
 
 type User @key(fields: "id") {
