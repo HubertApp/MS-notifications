@@ -112,9 +112,6 @@ describe('NotificationDispatcherService', () => {
   });
 
   it('shouldStillResolveEvenIfPublishingFails', async () => {
-    // publish() gère déjà ses propres erreurs en interne (voir
-    // NotificationDeliveryPublisher) : ce test vérifie que le dispatcher ne
-    // plante pas non plus si jamais une exception remontait malgré tout.
     mockPublisher.publish.mockRejectedValueOnce(new Error('RabbitMQ down'));
 
     await expect(
@@ -126,9 +123,6 @@ describe('NotificationDispatcherService', () => {
         channels: ['EMAIL'],
       }),
     ).rejects.toThrow('RabbitMQ down');
-    // Note : la notification est déjà persistée à ce stade (create() a été
-    // awaited avant la boucle de publication) — seul le job de livraison
-    // échoue, jamais la notification elle-même.
     expect(mockNotificationsService.create).toHaveBeenCalledTimes(1);
   });
 });

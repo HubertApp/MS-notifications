@@ -1,15 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GraphQLClient, gql } from 'graphql-request';
 
-// Résout l'adresse e-mail d'un utilisateur en interrogeant MS-User — jamais
-// l'inverse (on ne fait JAMAIS confiance à un e-mail fourni par un client
-// GraphQL public pour savoir "à qui" on envoie un mail). Voir le resolver
-// createNotification : aucun argument `email` n'existe côté client.
-//
-// S'identifie auprès de MS-User comme appelant de confiance interne via le
-// rôle "SERVICE", même mécanisme que MS-Auth → MS-User (voir AUDIT.md :
-// confiance basée sur des headers non signés, limitation connue et acceptée
-// pour l'instant car gérée par le routeur en amont).
+// Résout l'e-mail d'un utilisateur via MS-User. Voir ARCHITECTURE.md §4.
 @Injectable()
 export class UserLookupService {
   private readonly logger = new Logger(UserLookupService.name);
@@ -28,9 +20,6 @@ export class UserLookupService {
     );
   }
 
-  // Retourne undefined (jamais ne lève) si l'utilisateur est introuvable ou
-  // si MS-User est injoignable : un canal e-mail indisponible ne doit jamais
-  // faire échouer la création d'une notification.
   async getEmailForUser(userId: string): Promise<string | undefined> {
     const query = gql`
       query FindOne($googleId: String!) {

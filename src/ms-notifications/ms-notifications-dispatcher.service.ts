@@ -7,27 +7,12 @@ import { Notification } from './entities/notification.entity';
 import { NotificationDeliveryPublisher } from './notification-delivery.publisher';
 
 export interface DispatchNotificationParams extends CreateNotificationParams {
-  // Canaux additionnels demandés en plus de la persistance in-app, ex:
-  // ['EMAIL']. IN_APP est toujours implicite (voir NotificationsService.create)
-  // et n'engendre jamais de job : il n'y a rien à livrer, c'est déjà fait.
   channels?: string[];
-  // Réservé aux appelants internes de confiance (ex: le controller RabbitMQ,
-  // qui a déjà l'e-mail dans le payload de l'événement) : évite un
-  // aller-retour réseau vers MS-User. JAMAIS exposé comme argument GraphQL
-  // (voir le resolver et UserLookupService) : un client ne doit jamais
-  // pouvoir dicter à quelle adresse un mail est envoyé pour un userId donné.
+  // Jamais exposé côté GraphQL, voir ARCHITECTURE.md §4.
   recipientEmail?: string;
 }
 
-// Orchestrateur : persiste toujours la notification (source de vérité), puis
-// publie un job de livraison par canal demandé sur la queue RabbitMQ
-// "notification_delivery_queue" (voir NotificationDeliveryPublisher /
-// NotificationDeliveryConsumer). Le dispatcher lui-même n'appelle plus
-// aucune stratégie de canal directement : sa seule responsabilité est
-// persistance + publication, toutes deux rapides et fiables. C'est le
-// consumer (un process séparé du point de vue logique, même s'il tourne
-// dans le même pod pour l'instant) qui exécute réellement l'envoi, avec
-// retries et dead-letter en cas d'échec — voir notification-delivery.consumer.ts.
+// Persiste puis publie un job par canal (voir ARCHITECTURE.md §5).
 @Injectable()
 export class NotificationDispatcherService {
   private readonly logger = new Logger(NotificationDispatcherService.name);

@@ -7,7 +7,6 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Événements métier entrants (ex: user_created émis par MS-Auth).
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
@@ -19,10 +18,6 @@ async function bootstrap() {
     },
   });
 
-  // Queue de livraison des notifications (e-mail, futurs SMS/push...). Ack
-  // manuel (noAck: false) : NotificationDeliveryConsumer décide lui-même
-  // quand un message peut être retiré de la queue (succès, abandon, ou
-  // republication après échec) — voir notification-delivery.consumer.ts.
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
@@ -35,7 +30,6 @@ async function bootstrap() {
     },
   });
 
-  // Queue des échecs définitifs de livraison (observabilité uniquement).
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {

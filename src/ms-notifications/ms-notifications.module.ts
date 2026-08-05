@@ -31,9 +31,6 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
       { name: NotificationMongooseSchema.name, schema: NotificationSchema },
     ]),
 
-    // Clients de publication vers les deux queues de livraison. Voir main.ts
-    // pour le côté consommateur (connectMicroservice), qui doit utiliser
-    // exactement les mêmes noms de queue.
     ClientsModule.register([
       {
         name: NOTIFICATION_DELIVERY_CLIENT,
@@ -68,15 +65,8 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
     NotificationsResolver,
     UsersResolver,
 
-    // Provider mail (stratégie pour l'envoi effectif d'un e-mail). Pour
-    // changer de fournisseur, il suffit de remplacer useClass ici.
     { provide: MAIL_PROVIDER, useClass: SmtpMailProvider },
 
-    // Canaux de notification (pattern Stratégie), utilisés par
-    // NotificationDeliveryConsumer — le dispatcher, lui, ne fait que publier
-    // des jobs (voir ms-notifications-dispatcher.service.ts). Pour ajouter
-    // un canal (SMS, push...) : créer la classe, l'ajouter aux providers et
-    // à `inject`/paramètres du factory, sans toucher au consumer.
     InAppNotificationChannel,
     EmailNotificationChannel,
     {

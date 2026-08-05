@@ -1,15 +1,6 @@
-// Tests de performance : avec la queue RabbitMQ de livraison, le chemin
-// "producteur" (dispatch : persister + publier un job) et le chemin
-// "consommateur" (traiter réellement un job : résoudre l'e-mail, envoyer via
-// SMTP...) sont deux choses complètement découplées, reliées uniquement par
-// la queue. On mesure donc les deux séparément :
-//  1. Le débit du producteur (ce qui détermine la latence perçue par un
-//     appelant GraphQL ou par l'event RabbitMQ user_created).
-//  2. Le débit du consommateur (ce qui détermine la vitesse à laquelle la
-//     "pile" de mails en attente se vide).
-// Tout est mocké côté I/O (pas de vrai Mongo/RabbitMQ/SMTP) pour rester
-// déterministe et rapide en CI. Pour un vrai test de charge HTTP contre une
-// instance qui tourne, voir scripts/load-test.mjs.
+// Producteur (dispatch) et consommateur (livraison réelle) mesurés
+// séparément, voir ARCHITECTURE.md. Tout est mocké côté I/O pour rester
+// déterministe en CI ; pour un test de charge HTTP réel, voir scripts/load-test.mjs.
 import { Test, TestingModule } from '@nestjs/testing';
 import { RmqContext } from '@nestjs/microservices';
 import { NotificationDispatcherService } from '../../src/ms-notifications/ms-notifications-dispatcher.service';
@@ -21,11 +12,8 @@ import { NotificationChannel } from '../../src/ms-notifications/channels/notific
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Simule une latence Mongo/RabbitMQ modeste (écriture réseau locale), très
-// inférieure à un aller-retour SMTP réel.
 const SIMULATED_DB_LATENCY_MS = 5;
 const SIMULATED_BROKER_PUBLISH_LATENCY_MS = 5;
-// Simule un SMTP réaliste (beaucoup de fournisseurs répondent en 50-300ms).
 const SIMULATED_SMTP_LATENCY_MS = 80;
 
 function mockRmqContext(): RmqContext {
@@ -82,10 +70,6 @@ describe('MS-notifications (performance)', () => {
       );
       const elapsedMs = Date.now() - start;
 
-      // Le producteur ne dépend que des latences DB + publish (toutes deux
-      // rapides et parallélisables), jamais de la latence d'envoi réelle
-      // (SMTP) qui n'intervient que côté consumer, ailleurs. Marge x10 pour
-      // ne pas rendre le test flaky sur une machine chargée.
       const maxAcceptableMs =
         CONCURRENCY * (SIMULATED_DB_LATENCY_MS + SIMULATED_BROKER_PUBLISH_LATENCY_MS) * 10;
       expect(elapsedMs).toBeLessThan(maxAcceptableMs);
@@ -103,7 +87,6 @@ describe('MS-notifications (performance)', () => {
             content: 'Notification in-app uniquement',
             type: 'MANUAL',
             source: 'perf-test',
-            // Pas de "channels" : que de la persistance, le cas le plus fréquent.
           }),
         ),
       );
@@ -143,9 +126,6 @@ describe('MS-notifications (performance)', () => {
       const JOB_COUNT = 20;
 
       const start = Date.now();
-      // Le traitement est intentionnellement séquentiel (comme un vrai
-      // consumer RabbitMQ à prefetch=1) : c'est ce compromis, documenté,
-      // qui évite de bombarder un SMTP en parallèle sans limite.
       for (let i = 0; i < JOB_COUNT; i++) {
         await consumer.handleDelivery(
           {
@@ -162,7 +142,6 @@ describe('MS-notifications (performance)', () => {
       const elapsedMs = Date.now() - start;
 
       expect(sendCallCount).toBe(JOB_COUNT);
-      // Budget cohérent avec la latence SMTP simulée (marge x3).
       expect(elapsedMs).toBeLessThan(JOB_COUNT * SIMULATED_SMTP_LATENCY_MS * 3);
     }, 20000);
   });
@@ -188,8 +167,6 @@ describe('MS-notifications (performance)', () => {
       }).compile();
       const dispatcher = module.get(NotificationDispatcherService);
 
-      // Un "consumer" volontairement très lent (simule un SMTP quasi mort),
-      // lancé en tâche de fond, PENDANT qu'on continue à dispatcher.
       const mockUserLookup = { getEmailForUser: jest.fn().mockResolvedValue('user@example.com') };
       const mockDeliveryPublisher = { publishJob: jest.fn(), publishFailed: jest.fn() };
       const stuckChannel: NotificationChannel = {
@@ -227,7 +204,7 @@ describe('MS-notifications (performance)', () => {
 
       expect(elapsedMs).toBeLessThan(500);
 
-      await stuckJobPromise; // nettoyage, pour ne pas laisser de timer en vol.
+      await stuckJobPromise;
     }, 10000);
   });
 });

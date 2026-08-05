@@ -114,8 +114,6 @@ describe('NotificationDeliveryConsumer', () => {
     mockEmailChannel.send.mockRejectedValueOnce(new Error('SMTP down'));
     const ctx = makeContext();
 
-    // Déjà à 4 essais précédents : celui-ci est le 5e (MAX_ATTEMPTS), donc
-    // pas de délai de backoff à attendre dans ce test.
     await consumer.handleDelivery({ ...baseJob, attempts: 4 }, ctx);
 
     expect(mockPublisher.publishFailed).toHaveBeenCalledWith(

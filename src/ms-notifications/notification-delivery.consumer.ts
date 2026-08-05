@@ -12,18 +12,11 @@ import type {
 } from './channels/notification-channel.interface';
 import { UserLookupService } from './user-lookup.service';
 
+// Voir ARCHITECTURE.md §5 (retry/backoff) et §3 (pattern Stratégie).
 const MAX_ATTEMPTS = 5;
-
-// Backoff volontairement simple (pas de plugin RabbitMQ de délai/priorité) :
-// on attend un peu avant de republier, la durée grandit avec le nombre
-// d'essais, plafonnée à 10s. Pendant ce délai, ce consumer ne traite pas
-// d'autre job (voir la doc du service pour ce compromis assumé).
 const backoffMs = (attempts: number) => Math.min(attempts * 2000, 10000);
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Consomme la queue "notification_delivery_queue" (voir main.ts). C'est ici,
-// et seulement ici, que le pattern Stratégie (NotificationChannel) est
-// réellement exécuté : le dispatcher ne fait plus que publier des jobs.
 @Controller()
 export class NotificationDeliveryConsumer {
   private readonly logger = new Logger(NotificationDeliveryConsumer.name);
@@ -108,10 +101,6 @@ export class NotificationDeliveryConsumer {
       return;
     }
 
-    // On accuse réception du message original (il ne sera pas redélivré tel
-    // quel par RabbitMQ) puis on republie nous-mêmes une copie à jour avec le
-    // compteur incrémenté — c'est ce qui permet de suivre "attempts" alors
-    // que RabbitMQ lui-même ne modifie jamais le contenu d'un message.
     await delay(backoffMs(attempts));
     await this.publisher.publishJob({ ...job, attempts });
     channelRef.ack(originalMsg);

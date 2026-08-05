@@ -20,7 +20,6 @@ export class EmailNotificationChannel implements NotificationChannel {
 
   async send(notification: Notification, recipient: NotificationRecipient): Promise<void> {
     if (!recipient.email) {
-      // Garde-fou : supports() aurait dû être vérifié avant par le dispatcher, mais on ne fait jamais confiance à l'appelant.
       this.logger.warn(
         `Canal EMAIL demandé sans adresse pour user_id=${recipient.userId}, ignoré.`,
       );

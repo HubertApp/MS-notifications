@@ -1,15 +1,5 @@
-// Tests d'intégration : contrairement aux tests unitaires (*.spec.ts dans
-// src/, tout mocké), on fait tourner ici la vraie chaîne NestJS — vrai
-// module Mongoose, vrai schéma, vrai service, vrai dispatcher, vrai
-// consumer de livraison, vrais canaux — contre une vraie base MongoDB
-// (éphémère, en mémoire via mongodb-memory-server, donc pas besoin d'un
-// Mongo externe pour lancer ces tests).
-//
-// Trois frontières restent doublées, car véritablement externes au service :
-// le broker RabbitMQ réel (on simule sa queue en capturant ce qui est
-// "emit" puis en le rejouant directement sur le consumer — pas de vrai
-// AMQP nécessaire pour ces tests), l'envoi SMTP réel (MailProvider), et
-// l'appel HTTP vers MS-User (UserLookupService).
+// Vraie chaîne NestJS + Mongo en mémoire. Seuls le broker RabbitMQ (capture
+// + rejeu manuel sur le consumer), le SMTP et MS-User sont doublés.
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { RmqContext } from '@nestjs/microservices';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -35,10 +25,6 @@ import { MAIL_PROVIDER, MailMessage, MailProvider } from '../../src/mail/mail-pr
 import { UserLookupService } from '../../src/ms-notifications/user-lookup.service';
 import { FederatedAuthGuard, AuthenticatedUser } from '../../src/common/guards/federated-auth.guard';
 
-// Simule le contexte GraphQL que FederatedAuthGuard extrait via
-// GqlExecutionContext.create(context).getContext() — celui-ci appelle
-// context.getArgs() puis prend l'index 2, le 3e argument standard d'un
-// resolver GraphQL (parent, args, context, info).
 function mockGqlExecutionContext(headers: Record<string, string>): ExecutionContext {
   const req = { headers };
   return {
@@ -85,9 +71,6 @@ describe('MS-notifications (intégration)', () => {
     userLookupStub = { getEmailForUser: jest.fn().mockResolvedValue('user@example.com') };
     emittedJobs = [];
 
-    // Double du ClientProxy RabbitMQ : au lieu d'un vrai broker, on capture
-    // simplement ce qui serait publié. Les tests "producteur → consommateur"
-    // rejouent ensuite manuellement ce job capturé sur le vrai consumer.
     const fakeDeliveryClient = {
       emit: jest.fn((pattern: string, data: NotificationDeliveryJob) => {
         emittedJobs.push({ pattern, data });
@@ -208,7 +191,6 @@ describe('MS-notifications (intégration)', () => {
         channels: ['EMAIL'],
       });
 
-      // 1) Le dispatcher a bien persisté ET publié un job (pas encore livré).
       expect(fakeMailProvider.sent.length).toBe(before);
       expect(emittedJobs).toHaveLength(1);
       expect(emittedJobs[0].data).toMatchObject({
@@ -218,9 +200,6 @@ describe('MS-notifications (intégration)', () => {
         attempts: 0,
       });
 
-      // 2) On rejoue ce job exact sur le vrai consumer (comme le ferait
-      // RabbitMQ en le délivrant) : c'est ici que la stratégie EMAIL et le
-      // MailProvider (doublé) sont réellement exécutés.
       const { context, ack } = mockRmqContext();
       await deliveryConsumer.handleDelivery(emittedJobs[0].data, context);
 

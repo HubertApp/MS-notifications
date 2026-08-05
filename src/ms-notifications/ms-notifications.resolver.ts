@@ -22,26 +22,14 @@ export class UsersResolver {
 export class NotificationsResolver {
   constructor(private readonly dispatcher: NotificationDispatcherService, private readonly notificationsService: NotificationsService) {}
 
-  // Protégée par FederatedAuthGuard, ne renvoie que les notifications de
-  // l'appelant authentifié. Le nom "getAllNotifications" est conservé pour
-  // ne pas casser le contrat GraphQL existant, mais il est trompeur : c'est
-  // en réalité "mes notifications".
+  // Ne renvoie que les notifications de l'appelant, voir ARCHITECTURE.md §6.
   @Query('getAllNotifications')
   @UseGuards(FederatedAuthGuard)
   findAll(@CurrentUser() user: AuthenticatedUser) {
     return this.notificationsService.findForUser(user.userId);
   }
 
-  // Mutation authentifiée. Un utilisateur normal ne peut créer une
-  // notification que pour lui-même ; seul un appelant avec le rôle "SERVICE"
-  // (communication interservices via le gateway) peut en créer pour un tiers.
-  //
-  // `channels` permet de demander une livraison additionnelle (ex: ["EMAIL"]),
-  // en plus de la persistance in-app toujours effectuée. Volontairement, il
-  // n'existe AUCUN argument `email` ici : l'adresse n'est jamais fournie par
-  // le client, toujours résolue côté serveur via UserLookupService (MS-User),
-  // pour qu'un appelant ne puisse jamais détourner un envoi vers une adresse
-  // arbitraire (voir NotificationDispatcherService et user-lookup.service.ts).
+  // Pas d'argument `email` : résolution toujours côté serveur, voir ARCHITECTURE.md §4.
   @Mutation('createNotification')
   @UseGuards(FederatedAuthGuard)
   create(

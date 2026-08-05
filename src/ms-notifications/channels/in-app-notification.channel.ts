@@ -5,11 +5,7 @@ import {
   NotificationRecipient,
 } from './notification-channel.interface';
 
-// Canal "in-app" : en réalité il n'y a rien à envoyer, la persistance en base
-// (NotificationsService.create, appelée AVANT le dispatch des canaux) EST la
-// livraison in-app — c'est elle que getAllNotifications consulte. Ce canal
-// existe surtout pour que "IN_APP" soit un choix explicite et symétrique aux
-// autres dans la liste `channels`, plutôt qu'un cas spécial caché.
+// La persistance est déjà la livraison in-app, voir ARCHITECTURE.md §3.
 @Injectable()
 export class InAppNotificationChannel implements NotificationChannel {
   readonly type = 'IN_APP';
