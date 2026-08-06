@@ -5,19 +5,18 @@ services:
     build: .
     container_name: ms-notifications-container
     ports:
-      - "3001:3001" # Ton port API
+      - "3001:3001" 
     environment:
       - NODE_ENV=production
       - MONGO_URL=mongodb://mongodb:27017/hubertapp_notifications
-      # Canal e-mail : facultatif, voir .env.example. Non fourni ici, à
-      # renseigner via un fichier .env local si besoin (env_file plus bas).
+
     env_file:
       - .env
     networks:
       - app-network
     depends_on:
       rabbitmq:
-        condition: service_healthy # On attend que Rabbit soit "Healthy"
+        condition: service_healthy 
       mongodb:
         condition: service_started
 
@@ -51,3 +50,4 @@ volumes:
 networks:
   app-network:
     driver: bridge
+

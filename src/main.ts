@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { NOTIFICATIONS_QUEUE } from './ms-notifications/dto/user-created.event';
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
+const RABBITMQ_URL =
+  process.env.RABBITMQ_URL || 'amqp://user:password@rabbitmq:5672';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,8 +12,8 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
-      urls: ['amqp://rabbitmq:5672'],
-      queue: 'notifications_queue',
+      urls: [RABBITMQ_URL],
+      queue: NOTIFICATIONS_QUEUE,
       queueOptions: {
         durable: true,
       },
@@ -43,7 +45,7 @@ async function bootstrap() {
 
   await app.startAllMicroservices();
 
-  await app.listen(3001, '0.0.0.0');
+  await app.listen(3008, '0.0.0.0');
 
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
