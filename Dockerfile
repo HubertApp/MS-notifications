@@ -18,7 +18,7 @@ COPY . .
 RUN npm run build
 
 # 7. On expose le port (pour info)
-EXPOSE 3001
+EXPOSE 3008
 
 # Utilisateur non-root fourni par l'image node:alpine
 USER node

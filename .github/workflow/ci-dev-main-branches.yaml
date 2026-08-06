@@ -1,0 +1,63 @@
+name: "CI Main & Develop branches"
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    pull_request:
+      branches:
+        - main
+        - develop
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install, Lint and Test
+        run: make validate
+
+  build-and-push:
+    needs: quality-gate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Service Notifications
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/service-notifications:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/service-notifications:${{ github.sha }}
+
+    #   - name: SonarCloud Scan
+    #     uses: SonarSource/sonarcloud-github-action@master
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
