@@ -1,87 +1,31 @@
-# version: '3.8'
-
-# services:
-#   ms-notifications:
-#     build: .
-#     container_name: ms-notifications-container
-#     ports:
-#       - "3001:3001" 
-#     environment:
-#       - NODE_ENV=production
-#       - MONGO_URL=mongodb://mongodb:27017/hubertapp_notifications
-
-#     env_file:
-#       - .env
-#     networks:
-#       - app-network
-#     depends_on:
-#       rabbitmq:
-#         condition: service_healthy 
-#       mongodb:
-#         condition: service_started
-
-#   rabbitmq:
-#     image: rabbitmq:3-management
-#     container_name: rabbitmq-container
-#     ports:
-#       - "5672:5672"   # Port communication
-#       - "15672:15672" # Port interface web
-#     networks:
-#       - app-network
-#     healthcheck:
-#       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 5
-
-#   mongodb:
-#     image: mongo:latest
-#     container_name: mongodb-notifications-container
-#     ports:
-#       - "27018:27017"
-#     volumes:
-#       - mongo_notifications_data:/data/db
-#     networks:
-#       - app-network
-
-# volumes:
-#   mongo_notifications_data:
-
-# networks:
-#   app-network:
-#     driver: bridge
-
+version: '3.8'
 
 services:
   ms-notifications:
     build: .
     container_name: ms-notifications-container
     ports:
-      - "3008:3008"
+      - "3001:3001" 
     environment:
       - NODE_ENV=production
       - MONGO_URL=mongodb://mongodb:27017/hubertapp_notifications
-      - RABBITMQ_URL=amqp://user:password@rabbitmq:5672
-      - MS_USER_URL=http://service-user:3001/graphql
+
     env_file:
       - .env
     networks:
       - app-network
     depends_on:
       rabbitmq:
-        condition: service_healthy
+        condition: service_healthy 
       mongodb:
         condition: service_started
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq-container
-    environment:
-      - RABBITMQ_DEFAULT_USER=user
-      - RABBITMQ_DEFAULT_PASS=password
     ports:
-      - "5672:5672"
-      - "15672:15672" 
+      - "5672:5672"   # Port communication
+      - "15672:15672" # Port interface web
     networks:
       - app-network
     healthcheck:
@@ -105,5 +49,5 @@ volumes:
 
 networks:
   app-network:
-    name: hubertapp-network
     driver: bridge
+
