@@ -3,9 +3,9 @@ version: '3.8'
 services:
   ms-notifications:
     build: .
-    container_name: ms-notifications-container
+    container_name: service-notifications
     ports:
-      - "3001:3001" 
+      - "3002:3001" 
     environment:
       - NODE_ENV=production
       - MONGO_URL=mongodb://mongodb:27017/hubertapp_notifications
@@ -13,26 +13,12 @@ services:
     env_file:
       - .env
     networks:
-      - app-network
+      - hubert-network
     depends_on:
       rabbitmq:
         condition: service_healthy 
       mongodb:
         condition: service_started
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq-container
-    ports:
-      - "5672:5672"   # Port communication
-      - "15672:15672" # Port interface web
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   mongodb:
     image: mongo:latest
@@ -42,12 +28,11 @@ services:
     volumes:
       - mongo_notifications_data:/data/db
     networks:
-      - app-network
+      - hubert-network
 
 volumes:
   mongo_notifications_data:
 
 networks:
-  app-network:
-    driver: bridge
-
+  hubert-network:
+    external: true
