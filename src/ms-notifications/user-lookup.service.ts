@@ -9,7 +9,7 @@ export class UserLookupService {
 
   constructor() {
     this.client = new GraphQLClient(
-      process.env.MS_USER_URL || 'http://localhost:3001/graphql',
+      process.env.MS_USER_URL || 'http://service-user:3001/graphql',
       {
         headers: {
           'x-user-id': 'ms-notifications',
