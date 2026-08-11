@@ -53,4 +53,10 @@ export class NotificationsResolver {
       channels,
     });
   }
+
+  @Mutation('markNotificationAsRead')
+  @UseGuards(FederatedAuthGuard)
+  markAsRead(@Args('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.notificationsService.markAsRead(id, user.userId, user.role);
+  }
 }

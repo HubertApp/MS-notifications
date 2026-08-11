@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -23,7 +24,12 @@ import {
 import { NotificationDeliveryConsumer } from './notification-delivery.consumer';
 import { NotificationDeliveryFailedConsumer } from './notification-delivery-failed.consumer';
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
+const RABBITMQ_URL =
+  process.env.RABBITMQ_URL || 'amqps://user:password@rabbitmq:5671';
+const RABBITMQ_CA_PATH = process.env.RABBITMQ_CA_PATH || '/etc/tls/ca.pem';
+const socketOptions = RABBITMQ_URL.startsWith('amqps://')
+  ? { ca: [readFileSync(RABBITMQ_CA_PATH)] }
+  : undefined;
 
 @Module({
   imports: [
@@ -38,6 +44,7 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
         options: {
           urls: [RABBITMQ_URL],
           queue: 'notification_delivery_queue',
+          socketOptions,
           queueOptions: { durable: true },
         },
       },
@@ -47,6 +54,7 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
         options: {
           urls: [RABBITMQ_URL],
           queue: 'notification_delivery_failed_queue',
+          socketOptions,
           queueOptions: { durable: true },
         },
       },

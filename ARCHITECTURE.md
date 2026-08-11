@@ -138,8 +138,9 @@ Dans une version antérieure (fire-and-forget en mémoire), un crash du process 
 
 ## 6. API GraphQL
 
-- `getAllNotifications: [Notification!]!` — retourne uniquement les notifications de l'appelant authentifié (le nom du champ est conservé pour compatibilité, mais son comportement a changé lors de l'audit sécurité : plus jamais toutes les notifications de tous les utilisateurs).
+- `getAllNotifications: [Notification!]!` — retourne uniquement les notifications **non lues** de l'appelant authentifié (le nom du champ est conservé pour compatibilité, mais son comportement a changé lors de l'audit sécurité : plus jamais toutes les notifications de tous les utilisateurs). Une fois marquée lue, une notification disparaît de ce résultat mais reste en base.
 - `createNotification(userId: ID!, content: String!, channels: [String!]): Notification!` — voir §4 pour ce qui est volontairement absent (`email`).
+- `markNotificationAsRead(id: ID!): Notification!` — passe `isRead` à `true`. Réservé au propriétaire de la notification (ou à un appelant `role: SERVICE`), sinon `ForbiddenException`. C'est le mécanisme utilisé par le centre de notifications du front pour "supprimer" une notif de l'affichage sans la supprimer en base.
 
 ## 7. Authentification / autorisation
 
@@ -166,4 +167,13 @@ Comme documenté dans `AUDIT.md`, ce guard fait confiance aux headers sans véri
 | `MS_USER_URL` | Endpoint GraphQL de MS-User, utilisé par `UserLookupService` |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Configuration du serveur SMTP réel ; si `SMTP_HOST` absent, envoi simulé (log uniquement) |
 
-Note : la connexion RabbitMQ historique (`notifications_queue` / event `user_created`, dans `main.ts`) garde une URL codée en dur (`amqp://rabbitmq:5672`) plutôt que `RABBITMQ_URL` — incohérence mineure documentée dans `AUDIT.md`, sans impact tant que la valeur par défaut n'est pas changée.
+Note : la connexion RabbitMQ historique (`notifications_queue` / event `user_created`, dans `main.ts`) garde une URL codée en dur plutôt que `RABBITMQ_URL` — incohérence mineure documentée dans `AUDIT.md`, sans impact tant que la valeur par défaut n'est pas changée.
+
+## 10. TLS interne (amqps / https)
+
+Suite à des findings Sonar (`amqp`/`http` non chiffrés), une CA interne auto-signée (`hubertapp-internal-ca`, 10 ans) signe deux certificats :
+
+- `rabbitmq-tls` (CN `rabbitmq`) : listener TLS RabbitMQ sur 5671 en plus du 5672 en clair (celui-ci reste ouvert pour MS-User/MS-Admin/MS-aom-agregator, qui publient encore en `amqp://`). MS-notifications se connecte par défaut en `amqps://rabbitmq:5671`.
+- `ms-user-tls` (CN `ms-user`) : MS-User écoute en HTTPS sur 3444 en plus du HTTP 3001 (MS-Auth l'appelle encore en clair). `UserLookupService` se connecte par défaut en `https://ms-user:3444/graphql` (corrige au passage un ancien hostname `service-user` qui ne correspondait à aucun Service k8s réel).
+
+Secrets et `NODE_EXTRA_CA_CERTS=/etc/tls/ca.pem` définis dans `k8s/00-rabbitmq-notifications.yaml`, `k8s/06-ms-user.yaml`, `k8s/03-ms-notifications.yaml`.
