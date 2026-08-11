@@ -138,8 +138,9 @@ Dans une version antérieure (fire-and-forget en mémoire), un crash du process 
 
 ## 6. API GraphQL
 
-- `getAllNotifications: [Notification!]!` — retourne uniquement les notifications de l'appelant authentifié (le nom du champ est conservé pour compatibilité, mais son comportement a changé lors de l'audit sécurité : plus jamais toutes les notifications de tous les utilisateurs).
+- `getAllNotifications: [Notification!]!` — retourne uniquement les notifications **non lues** de l'appelant authentifié (le nom du champ est conservé pour compatibilité, mais son comportement a changé lors de l'audit sécurité : plus jamais toutes les notifications de tous les utilisateurs). Une fois marquée lue, une notification disparaît de ce résultat mais reste en base.
 - `createNotification(userId: ID!, content: String!, channels: [String!]): Notification!` — voir §4 pour ce qui est volontairement absent (`email`).
+- `markNotificationAsRead(id: ID!): Notification!` — passe `isRead` à `true`. Réservé au propriétaire de la notification (ou à un appelant `role: SERVICE`), sinon `ForbiddenException`. C'est le mécanisme utilisé par le centre de notifications du front pour "supprimer" une notif de l'affichage sans la supprimer en base.
 
 ## 7. Authentification / autorisation
 

@@ -23,6 +23,7 @@ type Query {
 # l'appelant (voir NotificationDispatcherService / UserLookupService).
 type Mutation {
   createNotification(userId: ID!, content: String!, channels: [String!]): Notification!
+  markNotificationAsRead(id: ID!): Notification!
 }
 
 type User @key(fields: "id") {

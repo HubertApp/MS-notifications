@@ -24,7 +24,8 @@ import {
 import { NotificationDeliveryConsumer } from './notification-delivery.consumer';
 import { NotificationDeliveryFailedConsumer } from './notification-delivery-failed.consumer';
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqps://rabbitmq:5671';
+const RABBITMQ_URL =
+  process.env.RABBITMQ_URL || 'amqps://user:password@rabbitmq:5671';
 const RABBITMQ_CA_PATH = process.env.RABBITMQ_CA_PATH || '/etc/tls/ca.pem';
 const socketOptions = RABBITMQ_URL.startsWith('amqps://')
   ? { ca: [readFileSync(RABBITMQ_CA_PATH)] }

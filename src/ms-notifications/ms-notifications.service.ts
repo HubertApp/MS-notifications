@@ -1,5 +1,9 @@
 // src/ms-notifications/ms-notifications.service.ts
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -36,13 +40,34 @@ export class NotificationsService {
     return this.toEntity(doc);
   }
 
-  // Seul findForUser() subsiste, toujours filtré par destinataire.
+  // Ne renvoie que les notifications non lues : une fois marquée lue, elle
+  // sort du centre de notif du front mais reste en base (isRead: true).
   async findForUser(userId: string): Promise<Notification[]> {
     const docs = await this.notificationModel
-      .find({ userId })
+      .find({ userId, isRead: false })
       .sort({ createdAt: -1 })
       .exec();
     return docs.map((d) => this.toEntity(d));
+  }
+
+  async markAsRead(
+    id: string,
+    callerUserId: string,
+    callerRole: string,
+  ): Promise<Notification> {
+    const doc = await this.notificationModel.findById(id).exec();
+    if (!doc) {
+      throw new NotFoundException('Notification introuvable');
+    }
+    if (callerRole !== 'SERVICE' && doc.userId !== callerUserId) {
+      throw new ForbiddenException(
+        "Vous ne pouvez pas modifier la notification d'un autre utilisateur.",
+      );
+    }
+
+    doc.isRead = true;
+    await doc.save();
+    return this.toEntity(doc);
   }
 
   private toEntity(doc: NotificationDocument): Notification {
