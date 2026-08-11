@@ -15,8 +15,6 @@ services:
     networks:
       - hubert-network
     depends_on:
-      rabbitmq:
-        condition: service_healthy 
       mongodb:
         condition: service_started
 
