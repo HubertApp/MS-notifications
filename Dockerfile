@@ -10,7 +10,7 @@ COPY . .
 
 RUN npm run build
 
-EXPOSE 3001
+EXPOSE 3008
 
 USER node
 
