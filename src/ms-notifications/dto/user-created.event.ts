@@ -9,7 +9,9 @@ export interface UserCreatedEvent {
 
   pseudo?: string;
 
-  template?: 'welcome' | string;
+  // Valeur connue a ce jour : 'welcome'. Le type reste `string` car l'emetteur
+  // (MS-User) peut en introduire d'autres sans que ce service soit redeploye.
+  template?: string;
 
   occurred_at?: string;
 

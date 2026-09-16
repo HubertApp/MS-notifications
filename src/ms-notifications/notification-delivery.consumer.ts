@@ -17,6 +17,13 @@ const MAX_ATTEMPTS = 5;
 const backoffMs = (attempts: number) => Math.min(attempts * 2000, 10000);
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// RmqContext.getChannelRef() est typé `any` par @nestjs/microservices. On ne
+// se sert que de ack(), donc on decrit ce minimum — meme forme que celle deja
+// attendue par handleFailure plus bas.
+interface AmqpChannelRef {
+  ack: (msg: unknown) => void;
+}
+
 @Controller()
 export class NotificationDeliveryConsumer {
   private readonly logger = new Logger(NotificationDeliveryConsumer.name);
@@ -33,7 +40,7 @@ export class NotificationDeliveryConsumer {
     @Payload() job: NotificationDeliveryJob,
     @Ctx() context: RmqContext,
   ): Promise<void> {
-    const channelRef = context.getChannelRef();
+    const channelRef = context.getChannelRef() as AmqpChannelRef;
     const originalMsg = context.getMessage();
 
     const channel = this.channels.find((c) => c.type === job.channelType);

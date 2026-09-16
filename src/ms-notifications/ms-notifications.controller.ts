@@ -1,5 +1,5 @@
 import { Controller, Logger } from '@nestjs/common';
-import { EventPattern, Payload, Ctx, RmqContext } from '@nestjs/microservices';
+import { EventPattern, Payload } from '@nestjs/microservices';
 import { NotificationDispatcherService } from './ms-notifications-dispatcher.service';
 import { USER_CREATED_PATTERN } from './dto/user-created.event';
 import type { UserCreatedEvent } from './dto/user-created.event';
@@ -11,10 +11,10 @@ export class NotificationsController {
   constructor(private readonly dispatcher: NotificationDispatcherService) {}
 
   @EventPattern(USER_CREATED_PATTERN)
-  async handleUserCreated(
-    @Payload() data: UserCreatedEvent,
-    @Ctx() context: RmqContext,
-  ): Promise<void> {
+  // Pas de @Ctx ici : ce handler ne fait pas d'ack manuel, contrairement a
+  // NotificationDeliveryConsumer. Injecter un contexte inutilise masquait une
+  // difference reelle entre les deux consommateurs.
+  async handleUserCreated(@Payload() data: UserCreatedEvent): Promise<void> {
     
     const userId = data?.user_id ?? data?.googleId;
     const email = data?.email;
