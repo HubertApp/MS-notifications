@@ -12,10 +12,19 @@ export interface AuthenticatedUser {
   email?: string;
 }
 
+// Les en-têtes viennent du routeur Apollo : c'est une frontière non typée.
+// La décrire ici une fois evite de propager du `any` dans tout le guard.
+export interface FederatedRequest {
+  headers: Record<string, string | string[] | undefined>;
+  user?: AuthenticatedUser;
+}
+
 @Injectable()
 export class FederatedAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const ctx = GqlExecutionContext.create(context).getContext();
+    const ctx = GqlExecutionContext.create(context).getContext<{
+      req: FederatedRequest;
+    }>();
     const headers = ctx.req.headers;
 
     const authState = headers['x-auth-state'];
@@ -34,7 +43,7 @@ export class FederatedAuthGuard implements CanActivate {
       email: headers['x-user-email']
         ? String(headers['x-user-email'])
         : undefined,
-    } as AuthenticatedUser;
+    };
 
     return true;
   }

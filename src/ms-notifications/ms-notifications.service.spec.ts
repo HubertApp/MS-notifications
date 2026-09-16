@@ -1,3 +1,4 @@
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { NotificationsService } from './ms-notifications.service';
@@ -16,6 +17,9 @@ describe('NotificationsService', () => {
     triggeredBy: data.triggeredBy,
     isRead: data.isRead ?? false,
     createdAt: data.createdAt ?? new Date(),
+    save: jest.fn(function (this: Record<string, any>) {
+      return Promise.resolve(this);
+    }),
   });
 
   let stored: any[] = [];
@@ -33,6 +37,12 @@ describe('NotificationsService', () => {
             stored.filter((d) => !query?.userId || d.userId === query.userId),
           ),
       }),
+    })),
+    // markAsRead relit le document puis appelle doc.save() : le mock doit donc
+    // rendre un document mutable et persistant dans `stored`, sinon on ne peut
+    // pas verifier l'effet de bord.
+    findById: jest.fn((id: string) => ({
+      exec: () => Promise.resolve(stored.find((d) => d._id === id) ?? null),
     })),
   };
 
@@ -83,5 +93,52 @@ describe('NotificationsService', () => {
     expect(userANotifications).toHaveLength(2);
     const hasUserB = userANotifications.some((n) => n.userId === 'user-B');
     expect(hasUserB).toBe(false);
+  });
+  // --- markAsRead : controle d'autorisation ---------------------------------
+  // Cette methode decide qui a le droit de modifier la notification d'autrui.
+  // Sans ces tests, inverser la condition ligne 62 du service laissait la suite
+  // entierement verte.
+
+  const seed = (id: string, userId: string) => {
+    const doc = makeDoc({ _id: id, userId, content: 'x', type: 'MANUAL', source: 'test' });
+    stored.push(doc);
+    return doc;
+  };
+
+  it('shouldMarkAsReadWhenCallerOwnsTheNotification', async () => {
+    const doc = seed('notif-1', 'user-A');
+
+    const result = await service.markAsRead('notif-1', 'user-A', 'USER');
+
+    expect(result.isRead).toBe(true);
+    expect(doc.isRead).toBe(true);
+    expect(doc.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('shouldRefuseToMarkAsReadANotificationOwnedByAnotherUser', async () => {
+    const doc = seed('notif-2', 'user-A');
+
+    await expect(service.markAsRead('notif-2', 'user-B', 'USER')).rejects.toThrow(
+      ForbiddenException,
+    );
+
+    // L'effet de bord ne doit pas avoir eu lieu non plus.
+    expect(doc.isRead).toBe(false);
+    expect(doc.save).not.toHaveBeenCalled();
+  });
+
+  it('shouldAllowAServiceCallerToMarkAnyNotificationAsRead', async () => {
+    const doc = seed('notif-3', 'user-A');
+
+    const result = await service.markAsRead('notif-3', 'ms-notifications', 'SERVICE');
+
+    expect(result.isRead).toBe(true);
+    expect(doc.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('shouldThrowNotFoundWhenTheNotificationDoesNotExist', async () => {
+    await expect(service.markAsRead('inconnue', 'user-A', 'USER')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

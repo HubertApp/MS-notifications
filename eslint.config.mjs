@@ -32,4 +32,22 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  // Les fichiers de test manipulent des mocks Jest, qui sont `any` par
+  // construction : jest.fn() ne peut pas etre type sans annoter chaque mock a
+  // la main. Les regles no-unsafe-* y produisent donc du bruit, pas du signal.
+  // Elles restent ACTIVES sur src/ — contrairement a MS-User et MS-Auth, qui
+  // les desactivent partout ou ne lintent pas leurs tests du tout.
+  // unbound-method se declenche sur `expect(mock.method)`, qui est l'usage
+  // normal de Jest. require-await vise des helpers de test async sans await.
+  {
+    files: ['**/*.spec.ts', '**/*-spec.ts', 'test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
 );

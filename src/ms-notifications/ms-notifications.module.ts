@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { NotificationsService } from './ms-notifications.service';
@@ -27,9 +27,31 @@ import { NotificationDeliveryFailedConsumer } from './notification-delivery-fail
 const RABBITMQ_URL =
   process.env.RABBITMQ_URL || 'amqps://user:password@rabbitmq:5671';
 const RABBITMQ_CA_PATH = process.env.RABBITMQ_CA_PATH || '/etc/tls/ca.pem';
-const socketOptions = RABBITMQ_URL.startsWith('amqps://')
-  ? { ca: [readFileSync(RABBITMQ_CA_PATH)] }
-  : undefined;
+
+// Le certificat est lu au moment de construire les options, pas au chargement
+// du module. Un readFileSync au niveau du fichier faisait planter tout import
+// de AppModule sur une machine sans /etc/tls/ca.pem — donc les tests e2e, et
+// tout démarrage local en TLS sans le certificat monté.
+function buildSocketOptions(): { ca: Buffer[] } | undefined {
+  if (!RABBITMQ_URL.startsWith('amqps://')) {
+    return undefined;
+  }
+  try {
+    return { ca: [readFileSync(RABBITMQ_CA_PATH)] };
+  } catch {
+    // Pas de certificat disponible : on laisse amqplib utiliser le magasin
+    // système plutôt que d'empêcher l'application de démarrer. On le signale,
+    // car en production c'est une anomalie de déploiement (certificat non monté)
+    // et la connexion au broker échouera ensuite si son certificat est privé.
+    new Logger('MsNotificationsModule').warn(
+      `Certificat CA introuvable (${RABBITMQ_CA_PATH}) alors que RABBITMQ_URL ` +
+        `est en amqps. Connexion TLS tentée avec le magasin système.`,
+    );
+    return undefined;
+  }
+}
+
+const socketOptions = buildSocketOptions();
 
 @Module({
   imports: [

@@ -7,7 +7,6 @@ import { NotificationDispatcherService } from '../../src/ms-notifications/ms-not
 import { NotificationsService } from '../../src/ms-notifications/ms-notifications.service';
 import { NotificationDeliveryPublisher } from '../../src/ms-notifications/notification-delivery.publisher';
 import { NotificationDeliveryConsumer } from '../../src/ms-notifications/notification-delivery.consumer';
-import { UserLookupService } from '../../src/ms-notifications/user-lookup.service';
 import { NotificationChannel } from '../../src/ms-notifications/channels/notification-channel.interface';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
