@@ -4,21 +4,29 @@ services:
   ms-notifications:
     build: .
     container_name: service-notifications
+    labels:
+      logging: "enabled"
+      service: "service-notifications"
     ports:
       - "3008:3008"
     environment:
       - NODE_ENV=production
-      - MONGO_URL=mongodb://mongodb:27017/hubertapp_notifications
-
+      - MONGO_URL=mongodb://mongodb-notifications:27017/hubertapp_notifications
+      - OTEL_SERVICE_NAME=service-notifications
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=none
     env_file:
       - .env
     networks:
       - hubert-network
     depends_on:
-      mongodb:
+      mongodb-notifications:
         condition: service_started
 
-  mongodb:
+  mongodb-notifications:
     image: mongo:latest
     container_name: mongodb-notifications-container
     ports:
