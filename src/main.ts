@@ -1,3 +1,5 @@
+import './otel-setup';
+
 import { readFileSync } from 'fs';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
