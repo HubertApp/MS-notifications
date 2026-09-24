@@ -4,6 +4,8 @@ import { Notification } from '../entities/notification.entity';
 export interface NotificationRecipient {
   userId: string;
   email?: string;
+  /** Canaux désactivés par l'utilisateur (préférences MS-User), ex: ["EMAIL"]. */
+  disabledChannels?: string[];
 }
 
 export interface NotificationChannel {

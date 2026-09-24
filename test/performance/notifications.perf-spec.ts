@@ -103,7 +103,12 @@ describe('MS-notifications (performance)', () => {
     beforeEach(() => {
       sendCallCount = 0;
 
-      const mockUserLookup = { getEmailForUser: jest.fn().mockResolvedValue('user@example.com') };
+      const mockUserLookup = {
+        getRecipientInfo: jest.fn().mockResolvedValue({
+          email: 'user@example.com',
+          disabledChannels: [],
+        }),
+      };
       const mockPublisher = { publishJob: jest.fn(), publishFailed: jest.fn() };
       const emailChannel: NotificationChannel = {
         type: 'EMAIL',
@@ -166,7 +171,12 @@ describe('MS-notifications (performance)', () => {
       }).compile();
       const dispatcher = module.get(NotificationDispatcherService);
 
-      const mockUserLookup = { getEmailForUser: jest.fn().mockResolvedValue('user@example.com') };
+      const mockUserLookup = {
+        getRecipientInfo: jest.fn().mockResolvedValue({
+          email: 'user@example.com',
+          disabledChannels: [],
+        }),
+      };
       const mockDeliveryPublisher = { publishJob: jest.fn(), publishFailed: jest.fn() };
       const stuckChannel: NotificationChannel = {
         type: 'EMAIL',

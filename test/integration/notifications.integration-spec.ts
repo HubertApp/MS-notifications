@@ -60,7 +60,7 @@ describe('MS-notifications (intégration)', () => {
   let resolver: NotificationsResolver;
   let usersResolver: UsersResolver;
   let fakeMailProvider: FakeMailProvider;
-  let userLookupStub: { getEmailForUser: jest.Mock };
+  let userLookupStub: { getRecipientInfo: jest.Mock };
   let guard: FederatedAuthGuard;
   let emittedJobs: { pattern: string; data: NotificationDeliveryJob }[];
 
@@ -68,7 +68,12 @@ describe('MS-notifications (intégration)', () => {
     mongod = await MongoMemoryServer.create();
 
     fakeMailProvider = new FakeMailProvider();
-    userLookupStub = { getEmailForUser: jest.fn().mockResolvedValue('user@example.com') };
+    userLookupStub = {
+      getRecipientInfo: jest.fn().mockResolvedValue({
+        email: 'user@example.com',
+        disabledChannels: [],
+      }),
+    };
     emittedJobs = [];
 
     const fakeDeliveryClient = {
@@ -203,7 +208,7 @@ describe('MS-notifications (intégration)', () => {
       const { context, ack } = mockRmqContext();
       await deliveryConsumer.handleDelivery(emittedJobs[0].data, context);
 
-      expect(userLookupStub.getEmailForUser).toHaveBeenCalledWith('user-E');
+      expect(userLookupStub.getRecipientInfo).toHaveBeenCalledWith('user-E');
       expect(fakeMailProvider.sent.length).toBe(before + 1);
       expect(fakeMailProvider.sent[fakeMailProvider.sent.length - 1]).toMatchObject({
         to: 'user@example.com',

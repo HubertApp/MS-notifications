@@ -48,4 +48,22 @@ describe('UserLookupService', () => {
 
     expect(email).toBeUndefined();
   });
+
+  it('shouldReturnDisabledChannelsAlongsideTheEmail', async () => {
+    mockRequest.mockResolvedValue({
+      findOne: { email: 'user@example.com', notificationChannelsDisabled: ['EMAIL'] },
+    });
+
+    const info = await service.getRecipientInfo('user-123');
+
+    expect(info).toEqual({ email: 'user@example.com', disabledChannels: ['EMAIL'] });
+  });
+
+  it('shouldDefaultDisabledChannelsToAnEmptyArrayWhenAbsent', async () => {
+    mockRequest.mockResolvedValue({ findOne: { email: 'user@example.com' } });
+
+    const info = await service.getRecipientInfo('user-123');
+
+    expect(info?.disabledChannels).toEqual([]);
+  });
 });
