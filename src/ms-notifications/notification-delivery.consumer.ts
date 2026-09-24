@@ -53,8 +53,21 @@ export class NotificationDeliveryConsumer {
     }
 
     try {
-      const email = job.email ?? (await this.userLookup.getEmailForUser(job.userId));
-      const recipient: NotificationRecipient = { userId: job.userId, email };
+      const recipientInfo = await this.userLookup.getRecipientInfo(job.userId);
+      const email = job.email ?? recipientInfo?.email;
+      const recipient: NotificationRecipient = {
+        userId: job.userId,
+        email,
+        disabledChannels: recipientInfo?.disabledChannels ?? [],
+      };
+
+      if (recipient.disabledChannels?.includes(job.channelType)) {
+        this.logger.log(
+          `Canal "${job.channelType}" désactivé par l'utilisateur user_id=${job.userId}, job ignoré (notif ${job.notificationId}).`,
+        );
+        channelRef.ack(originalMsg);
+        return;
+      }
 
       if (!channel.supports(recipient)) {
         this.logger.warn(

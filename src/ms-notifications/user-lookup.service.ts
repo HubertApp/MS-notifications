@@ -21,22 +21,36 @@ export class UserLookupService {
   }
 
   async getEmailForUser(userId: string): Promise<string | undefined> {
+    const recipient = await this.getRecipientInfo(userId);
+    return recipient?.email;
+  }
+
+  async getRecipientInfo(
+    userId: string,
+  ): Promise<{ email?: string; disabledChannels: string[] } | undefined> {
     const query = gql`
       query FindOne($googleId: String!) {
         findOne(googleId: $googleId) {
           email
+          notificationChannelsDisabled
         }
       }
     `;
 
     try {
       const response = await this.client.request<{
-        findOne?: { email?: string };
+        findOne?: { email?: string; notificationChannelsDisabled?: string[] };
       }>(query, { googleId: userId });
-      return response?.findOne?.email ?? undefined;
+
+      if (!response?.findOne) return undefined;
+
+      return {
+        email: response.findOne.email,
+        disabledChannels: response.findOne.notificationChannelsDisabled ?? [],
+      };
     } catch (err) {
       this.logger.warn(
-        `Impossible de récupérer l'e-mail de user_id=${userId} depuis MS-User : ${
+        `Impossible de récupérer les infos de user_id=${userId} depuis MS-User : ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
