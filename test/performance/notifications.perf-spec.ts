@@ -8,6 +8,8 @@ import { NotificationsService } from '../../src/ms-notifications/ms-notification
 import { NotificationDeliveryPublisher } from '../../src/ms-notifications/notification-delivery.publisher';
 import { NotificationDeliveryConsumer } from '../../src/ms-notifications/notification-delivery.consumer';
 import { NotificationChannel } from '../../src/ms-notifications/channels/notification-channel.interface';
+import { EmailNotificationChannel } from '../../src/ms-notifications/channels/email-notification.channel';
+import { Notification } from '../../src/ms-notifications/entities/notification.entity';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -32,7 +34,12 @@ describe('MS-notifications (performance)', () => {
         create: jest.fn(async (params: any) => {
           await delay(SIMULATED_DB_LATENCY_MS);
           idCounter += 1;
-          return { id: `notif-${idCounter}`, isRead: false, createdAt: new Date().toISOString(), ...params };
+          return {
+            id: `notif-${idCounter}`,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+            ...params,
+          };
         }),
       };
       const mockPublisher = {
@@ -70,7 +77,9 @@ describe('MS-notifications (performance)', () => {
       const elapsedMs = Date.now() - start;
 
       const maxAcceptableMs =
-        CONCURRENCY * (SIMULATED_DB_LATENCY_MS + SIMULATED_BROKER_PUBLISH_LATENCY_MS) * 10;
+        CONCURRENCY *
+        (SIMULATED_DB_LATENCY_MS + SIMULATED_BROKER_PUBLISH_LATENCY_MS) *
+        10;
       expect(elapsedMs).toBeLessThan(maxAcceptableMs);
       expect(elapsedMs).toBeLessThan(CONCURRENCY * SIMULATED_SMTP_LATENCY_MS);
     }, 20000);
@@ -150,7 +159,7 @@ describe('MS-notifications (performance)', () => {
     }, 20000);
   });
 
-  describe("le producteur reste rapide même si le consommateur est bloqué", () => {
+  describe('le producteur reste rapide même si le consommateur est bloqué', () => {
     it('shouldKeepDispatchingFastWhileTheConsumerIsStuckOnASlowJob', async () => {
       const mockNotificationsService = {
         create: jest.fn(async (params: any) => ({
@@ -177,7 +186,10 @@ describe('MS-notifications (performance)', () => {
           disabledChannels: [],
         }),
       };
-      const mockDeliveryPublisher = { publishJob: jest.fn(), publishFailed: jest.fn() };
+      const mockDeliveryPublisher = {
+        publishJob: jest.fn(),
+        publishFailed: jest.fn(),
+      };
       const stuckChannel: NotificationChannel = {
         type: 'EMAIL',
         supports: () => true,
@@ -214,6 +226,79 @@ describe('MS-notifications (performance)', () => {
       expect(elapsedMs).toBeLessThan(500);
 
       await stuckJobPromise;
+    }, 10000);
+  });
+
+  describe('rendu des templates email sous charge (canal EMAIL réel)', () => {
+    let channel: EmailNotificationChannel;
+    let sentCount: number;
+
+    const makeNotification = (type: string, i: number): Notification => ({
+      id: `notif-${i}`,
+      userId: `user-${i}`,
+      content: 'Contenu de test',
+      type,
+      source: 'perf-test',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    beforeEach(() => {
+      sentCount = 0;
+      const mockMailProvider = {
+        send: jest.fn(async () => {
+          sentCount += 1;
+          await delay(SIMULATED_SMTP_LATENCY_MS);
+        }),
+      };
+      channel = new EmailNotificationChannel(mockMailProvider as any);
+    });
+
+    it('shouldRenderAndSendABatchOfAccountDeletedEmailsWithinBudget', async () => {
+      const BATCH = 50;
+
+      const start = Date.now();
+      await Promise.all(
+        Array.from({ length: BATCH }, (_, i) =>
+          channel.send(makeNotification('ACCOUNT_DELETED', i), {
+            userId: `user-${i}`,
+            email: `user-${i}@example.com`,
+          }),
+        ),
+      );
+      const elapsedMs = Date.now() - start;
+
+      expect(sentCount).toBe(BATCH);
+      expect(elapsedMs).toBeLessThan(BATCH * SIMULATED_SMTP_LATENCY_MS);
+    }, 10000);
+
+    it('shouldNotBeMeaningfullySlowerThanTheWelcomeTemplateForTheSameBatchSize', async () => {
+      const BATCH = 50;
+
+      const welcomeStart = Date.now();
+      await Promise.all(
+        Array.from({ length: BATCH }, (_, i) =>
+          channel.send(makeNotification('WELCOME', i), {
+            userId: `user-${i}`,
+            email: `user-${i}@example.com`,
+          }),
+        ),
+      );
+      const welcomeElapsedMs = Date.now() - welcomeStart;
+
+      sentCount = 0;
+      const deletedStart = Date.now();
+      await Promise.all(
+        Array.from({ length: BATCH }, (_, i) =>
+          channel.send(makeNotification('ACCOUNT_DELETED', i), {
+            userId: `user-${i}`,
+            email: `user-${i}@example.com`,
+          }),
+        ),
+      );
+      const deletedElapsedMs = Date.now() - deletedStart;
+
+      expect(deletedElapsedMs).toBeLessThan(welcomeElapsedMs * 2 + 50);
     }, 10000);
   });
 });
