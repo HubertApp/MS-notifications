@@ -14,6 +14,12 @@ import { UserLookupService } from './user-lookup.service';
 
 // Voir ARCHITECTURE.md §5 (retry/backoff) et §3 (pattern Stratégie).
 const MAX_ATTEMPTS = 5;
+
+// Notifications transactionnelles/légales (RGPD) : leur envoi ne dépend pas
+// des préférences de désabonnement de l'utilisateur, contrairement aux
+// notifications "produit" (WELCOME, etc). Une confirmation de suppression de
+// compte doit atteindre l'utilisateur même s'il s'est désabonné des e-mails.
+const TRANSACTIONAL_TYPES = ['ACCOUNT_DELETED'];
 const backoffMs = (attempts: number) => Math.min(attempts * 2000, 10000);
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -61,7 +67,11 @@ export class NotificationDeliveryConsumer {
         disabledChannels: recipientInfo?.disabledChannels ?? [],
       };
 
-      if (recipient.disabledChannels?.includes(job.channelType)) {
+      const isTransactional = TRANSACTIONAL_TYPES.includes(job.type);
+      if (
+        !isTransactional &&
+        recipient.disabledChannels?.includes(job.channelType)
+      ) {
         this.logger.log(
           `Canal "${job.channelType}" désactivé par l'utilisateur user_id=${job.userId}, job ignoré (notif ${job.notificationId}).`,
         );

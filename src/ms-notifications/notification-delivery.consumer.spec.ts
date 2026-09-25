@@ -101,6 +101,22 @@ describe('NotificationDeliveryConsumer', () => {
     expect(ack).toHaveBeenCalledTimes(1);
   });
 
+  it('shouldStillSendAnAccountDeletedEmailEvenWhenTheChannelIsDisabledByUserPreferences', async () => {
+    mockUserLookup.getRecipientInfo.mockResolvedValue({
+      email: 'user@example.com',
+      disabledChannels: ['EMAIL'],
+    });
+    const ctx = makeContext();
+
+    await consumer.handleDelivery(
+      { ...baseJob, type: 'ACCOUNT_DELETED' },
+      ctx,
+    );
+
+    expect(mockEmailChannel.send).toHaveBeenCalledTimes(1);
+    expect(ack).toHaveBeenCalledTimes(1);
+  });
+
   it('shouldAckAndSkipWhenTheChannelTypeIsUnknown', async () => {
     const ctx = makeContext();
 
