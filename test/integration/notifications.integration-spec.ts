@@ -1,6 +1,10 @@
 // Vraie chaîne NestJS + Mongo en mémoire. Seuls le broker RabbitMQ (capture
 // + rejeu manuel sur le consumer), le SMTP et MS-User sont doublés.
-import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { RmqContext } from '@nestjs/microservices';
 import { Test, TestingModule } from '@nestjs/testing';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -8,9 +12,17 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { of } from 'rxjs';
 import { NotificationsService } from '../../src/ms-notifications/ms-notifications.service';
 import { NotificationDispatcherService } from '../../src/ms-notifications/ms-notifications-dispatcher.service';
-import { NotificationDeliveryPublisher, NOTIFICATION_DELIVERY_CLIENT, NOTIFICATION_DELIVERY_FAILED_CLIENT, NotificationDeliveryJob } from '../../src/ms-notifications/notification-delivery.publisher';
+import {
+  NotificationDeliveryPublisher,
+  NOTIFICATION_DELIVERY_CLIENT,
+  NOTIFICATION_DELIVERY_FAILED_CLIENT,
+  NotificationDeliveryJob,
+} from '../../src/ms-notifications/notification-delivery.publisher';
 import { NotificationDeliveryConsumer } from '../../src/ms-notifications/notification-delivery.consumer';
-import { NotificationsResolver, UsersResolver } from '../../src/ms-notifications/ms-notifications.resolver';
+import {
+  NotificationsResolver,
+  UsersResolver,
+} from '../../src/ms-notifications/ms-notifications.resolver';
 import {
   NotificationMongooseSchema,
   NotificationSchema,
@@ -21,11 +33,21 @@ import {
 } from '../../src/ms-notifications/channels/notification-channel.interface';
 import { InAppNotificationChannel } from '../../src/ms-notifications/channels/in-app-notification.channel';
 import { EmailNotificationChannel } from '../../src/ms-notifications/channels/email-notification.channel';
-import { MAIL_PROVIDER, MailMessage, MailProvider } from '../../src/mail/mail-provider.interface';
+import {
+  MAIL_PROVIDER,
+  MailMessage,
+  MailProvider,
+} from '../../src/mail/mail-provider.interface';
 import { UserLookupService } from '../../src/ms-notifications/user-lookup.service';
-import { FederatedAuthGuard, AuthenticatedUser } from '../../src/common/guards/federated-auth.guard';
+import {
+  FederatedAuthGuard,
+  AuthenticatedUser,
+} from '../../src/common/guards/federated-auth.guard';
+import { NotificationsController } from '../../src/ms-notifications/ms-notifications.controller';
 
-function mockGqlExecutionContext(headers: Record<string, string>): ExecutionContext {
+function mockGqlExecutionContext(
+  headers: Record<string, string>,
+): ExecutionContext {
   const req = { headers };
   return {
     getArgs: () => [undefined, undefined, { req }, undefined],
@@ -59,6 +81,7 @@ describe('MS-notifications (intégration)', () => {
   let deliveryConsumer: NotificationDeliveryConsumer;
   let resolver: NotificationsResolver;
   let usersResolver: UsersResolver;
+  let notificationsController: NotificationsController;
   let fakeMailProvider: FakeMailProvider;
   let userLookupStub: { getRecipientInfo: jest.Mock };
   let guard: FederatedAuthGuard;
@@ -93,6 +116,7 @@ describe('MS-notifications (intégration)', () => {
           { name: NotificationMongooseSchema.name, schema: NotificationSchema },
         ]),
       ],
+      controllers: [NotificationsController],
       providers: [
         NotificationsService,
         NotificationDispatcherService,
@@ -102,7 +126,10 @@ describe('MS-notifications (intégration)', () => {
         UsersResolver,
         FederatedAuthGuard,
         { provide: NOTIFICATION_DELIVERY_CLIENT, useValue: fakeDeliveryClient },
-        { provide: NOTIFICATION_DELIVERY_FAILED_CLIENT, useValue: fakeFailedClient },
+        {
+          provide: NOTIFICATION_DELIVERY_FAILED_CLIENT,
+          useValue: fakeFailedClient,
+        },
         { provide: MAIL_PROVIDER, useValue: fakeMailProvider },
         { provide: UserLookupService, useValue: userLookupStub },
         InAppNotificationChannel,
@@ -123,6 +150,7 @@ describe('MS-notifications (intégration)', () => {
     deliveryConsumer = moduleRef.get(NotificationDeliveryConsumer);
     resolver = moduleRef.get(NotificationsResolver);
     usersResolver = moduleRef.get(UsersResolver);
+    notificationsController = moduleRef.get(NotificationsController);
     guard = moduleRef.get(FederatedAuthGuard);
   });
 
@@ -210,7 +238,9 @@ describe('MS-notifications (intégration)', () => {
 
       expect(userLookupStub.getRecipientInfo).toHaveBeenCalledWith('user-E');
       expect(fakeMailProvider.sent.length).toBe(before + 1);
-      expect(fakeMailProvider.sent[fakeMailProvider.sent.length - 1]).toMatchObject({
+      expect(
+        fakeMailProvider.sent[fakeMailProvider.sent.length - 1],
+      ).toMatchObject({
         to: 'user@example.com',
         text: 'Bienvenue user-E !',
       });
@@ -235,6 +265,52 @@ describe('MS-notifications (intégration)', () => {
     });
   });
 
+  describe('event user_deleted : controller → dispatcher → queue → consumer → template compte supprimé', () => {
+    it('shouldDeliverAnAccountDeletedEmailRenderedFromTheRealTemplate', async () => {
+      const before = fakeMailProvider.sent.length;
+      emittedJobs = [];
+
+      await notificationsController.handleUserDeleted({
+        user_id: 'user-J',
+        email: 'user-j@example.com',
+        pseudo: 'JeanPart',
+        template: 'account_deleted',
+      });
+
+      expect(emittedJobs).toHaveLength(1);
+      expect(emittedJobs[0].data).toMatchObject({
+        userId: 'user-J',
+        channelType: 'EMAIL',
+        type: 'ACCOUNT_DELETED',
+      });
+
+      const { context, ack } = mockRmqContext();
+      await deliveryConsumer.handleDelivery(emittedJobs[0].data, context);
+
+      expect(fakeMailProvider.sent.length).toBe(before + 1);
+      const sentMail = fakeMailProvider.sent[fakeMailProvider.sent.length - 1];
+      expect(sentMail.to).toBe('user-j@example.com');
+      expect(sentMail.subject).toBe(
+        'Votre compte HubertApp a bien été supprimé',
+      );
+      expect(sentMail.html).toContain('Compte supprimé');
+      expect(sentMail.html).not.toContain('Ouvrir HubertApp');
+      expect(ack).toHaveBeenCalledTimes(1);
+    });
+
+    it('shouldNotDispatchAnythingWhenTheDeletedUserEventHasNoEmail', async () => {
+      const before = fakeMailProvider.sent.length;
+      emittedJobs = [];
+
+      await notificationsController.handleUserDeleted({
+        user_id: 'user-K',
+      } as any);
+
+      expect(emittedJobs).toHaveLength(0);
+      expect(fakeMailProvider.sent.length).toBe(before);
+    });
+  });
+
   describe('FederatedAuthGuard (vraie logique, contexte GraphQL simulé)', () => {
     it('shouldRejectWhenNoUserIdHeaderIsPresent', () => {
       const context = mockGqlExecutionContext({});
@@ -250,7 +326,9 @@ describe('MS-notifications (intégration)', () => {
     });
 
     it('shouldAllowAndPopulateReqUserWhenHeadersAreValid', () => {
-      const req: any = { headers: { 'x-user-id': 'user-123', 'x-user-role': 'USER' } };
+      const req: any = {
+        headers: { 'x-user-id': 'user-123', 'x-user-role': 'USER' },
+      };
       const context = {
         getArgs: () => [undefined, undefined, { req }, undefined],
         getClass: () => class {},
@@ -261,15 +339,27 @@ describe('MS-notifications (intégration)', () => {
       const result = guard.canActivate(context);
 
       expect(result).toBe(true);
-      expect(req.user).toEqual({ userId: 'user-123', role: 'USER', email: undefined });
+      expect(req.user).toEqual({
+        userId: 'user-123',
+        role: 'USER',
+        email: undefined,
+      });
     });
   });
 
   describe('resolver createNotification : autorisation + persistance réelles', () => {
-    const asUser = (userId: string, role = 'USER'): AuthenticatedUser => ({ userId, role });
+    const asUser = (userId: string, role = 'USER'): AuthenticatedUser => ({
+      userId,
+      role,
+    });
 
     it('shouldPersistWhenAUserCreatesForThemselves', async () => {
-      const result = await resolver.create('user-G', 'Pour moi-même', undefined, asUser('user-G'));
+      const result = await resolver.create(
+        'user-G',
+        'Pour moi-même',
+        undefined,
+        asUser('user-G'),
+      );
 
       expect(result.id).toBeDefined();
       const found = await notificationsService.findForUser('user-G');
@@ -280,7 +370,12 @@ describe('MS-notifications (intégration)', () => {
       const before = await notificationsService.findForUser('user-H');
 
       expect(() =>
-        resolver.create('user-H', 'Pas pour moi', undefined, asUser('user-intrus')),
+        resolver.create(
+          'user-H',
+          'Pas pour moi',
+          undefined,
+          asUser('user-intrus'),
+        ),
       ).toThrow(ForbiddenException);
 
       const after = await notificationsService.findForUser('user-H');
@@ -297,7 +392,9 @@ describe('MS-notifications (intégration)', () => {
 
       expect(result.id).toBeDefined();
       const found = await notificationsService.findForUser('user-I');
-      expect(found.some((n) => n.id === result.id && n.type === 'SERVICE')).toBe(true);
+      expect(
+        found.some((n) => n.id === result.id && n.type === 'SERVICE'),
+      ).toBe(true);
     });
   });
 });
