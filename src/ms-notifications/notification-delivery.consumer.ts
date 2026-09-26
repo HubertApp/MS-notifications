@@ -90,6 +90,7 @@ export class NotificationDeliveryConsumer {
           userId: job.userId,
           content: job.content,
           type: job.type,
+          subject: job.subject,
           source: '',
           isRead: false,
           createdAt: new Date().toISOString(),

@@ -70,6 +70,17 @@ describe('NotificationDeliveryConsumer', () => {
     );
   });
 
+  it('shouldPassTheSubjectCarriedByTheJobToTheChannel', async () => {
+    const ctx = makeContext();
+
+    await consumer.handleDelivery({ ...baseJob, subject: 'Objet' }, ctx);
+
+    expect(mockEmailChannel.send).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: 'Objet' }),
+      expect.anything(),
+    );
+  });
+
   it('shouldUseDisabledChannelsFromTheJob', async () => {
     const ctx = makeContext();
 

@@ -192,65 +192,75 @@ describe('NotificationsController', () => {
     });
   });
 
-  describe('handleTransitNetworkAggregated', () => {
-    const envInitial = { ...process.env };
+  describe('handleNotificationRequested', () => {
+    const baseEvent = {
+      user_id: 'admin',
+      recipient_email: 'admin@hubertapp.local',
+      subject: 'Objet choisi par l’émetteur',
+      content: 'Contenu rédigé par l’émetteur',
+      type: 'ANY_LABEL',
+      channels: ['EMAIL'],
+      triggered_by: 'ms-admin',
+    };
 
-    beforeEach(() => {
-      process.env.ADMIN_NOTIFICATION_EMAIL = 'admin@hubertapp.local';
-      process.env.ADMIN_USER_ID = 'admin';
+    it('shouldDispatchExactlyWhatTheEmitterProvided', async () => {
+      await controller.handleNotificationRequested(baseEvent);
+
+      expect(mockDispatcher.dispatch).toHaveBeenCalledTimes(1);
+      expect(mockDispatcher.dispatch).toHaveBeenCalledWith({
+        userId: 'admin',
+        recipientEmail: 'admin@hubertapp.local',
+        recipientDisabledChannels: [],
+        subject: 'Objet choisi par l’émetteur',
+        content: 'Contenu rédigé par l’émetteur',
+        type: 'ANY_LABEL',
+        channels: ['EMAIL'],
+        source: 'rabbitmq:notification_requested',
+        triggeredBy: 'ms-admin',
+      });
     });
 
-    afterEach(() => {
-      process.env = { ...envInitial };
-    });
-
-    it('shouldEmailTheConfiguredAdminWhenAggregationSucceeds', async () => {
-      await controller.handleTransitNetworkAggregated({
-        network_id: 'net-1',
-        network_name: 'Réseau test',
-        status: 'ok',
-        error: null,
+    it('shouldForwardTheDisabledChannelsProvidedByTheEmitter', async () => {
+      await controller.handleNotificationRequested({
+        ...baseEvent,
+        disabled_channels: ['EMAIL'],
       });
 
-      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'admin',
-          recipientEmail: 'admin@hubertapp.local',
-          channels: ['EMAIL'],
-          type: 'AGGREGATION_SUCCESS',
-          source: 'rabbitmq:transit_network_aggregated',
-          triggeredBy: 'ms-admin',
-        }),
-      );
-      expect(mockDispatcher.dispatch.mock.calls[0][0].content).toContain(
-        'Réseau test',
-      );
+      expect(
+        mockDispatcher.dispatch.mock.calls[0][0].recipientDisabledChannels,
+      ).toEqual(['EMAIL']);
     });
 
-    it('shouldEmailTheConfiguredAdminWithTheReasonWhenAggregationFails', async () => {
-      await controller.handleTransitNetworkAggregated({
-        network_id: 'net-1',
-        status: 'error',
-        error: 'flux corrompu',
+    it('shouldLeaveTheSubjectUndefinedWhenTheEmitterSendsNull', async () => {
+      await controller.handleNotificationRequested({
+        ...baseEvent,
+        subject: null,
       });
 
-      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'AGGREGATION_ERROR' }),
-      );
-      expect(mockDispatcher.dispatch.mock.calls[0][0].content).toContain(
-        'flux corrompu',
-      );
+      expect(mockDispatcher.dispatch.mock.calls[0][0].subject).toBeUndefined();
     });
 
-    it('shouldNotDispatchAnythingWhenNoAdminEmailIsConfigured', async () => {
-      delete process.env.ADMIN_NOTIFICATION_EMAIL;
-
-      await controller.handleTransitNetworkAggregated({
-        network_id: 'net-1',
-        status: 'ok',
-      });
+    it.each([
+      ['user_id', { user_id: '' }],
+      ['content', { content: '' }],
+      ['type', { type: '' }],
+      ['channels', { channels: [] }],
+      ['recipient_email', { recipient_email: null }],
+    ])('shouldIgnoreTheEventWhen%sIsMissing', async (_champ, override) => {
+      await controller.handleNotificationRequested({
+        ...baseEvent,
+        ...override,
+      } as any);
 
       expect(mockDispatcher.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('shouldSwallowDispatchFailuresSoTheBrokerDoesNotRedeliver', async () => {
+      mockDispatcher.dispatch.mockRejectedValueOnce(new Error('Mongo down'));
+
+      await expect(
+        controller.handleNotificationRequested(baseEvent),
+      ).resolves.toBeUndefined();
     });
   });
 });

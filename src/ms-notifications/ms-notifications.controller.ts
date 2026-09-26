@@ -5,8 +5,8 @@ import { USER_CREATED_PATTERN } from './dto/user-created.event';
 import type { UserCreatedEvent } from './dto/user-created.event';
 import { USER_DELETED_PATTERN } from './dto/user-deleted.event';
 import type { UserDeletedEvent } from './dto/user-deleted.event';
-import { TRANSIT_NETWORK_AGGREGATED_PATTERN } from './dto/transit-network-aggregated.event';
-import type { TransitNetworkAggregatedEvent } from './dto/transit-network-aggregated.event';
+import { NOTIFICATION_REQUESTED_PATTERN } from './dto/notification-requested.event';
+import type { NotificationRequestedEvent } from './dto/notification-requested.event';
 
 @Controller()
 export class NotificationsController {
@@ -75,62 +75,59 @@ export class NotificationsController {
     });
   }
 
-  @EventPattern(TRANSIT_NETWORK_AGGREGATED_PATTERN)
-  async handleTransitNetworkAggregated(
-    @Payload() data: TransitNetworkAggregatedEvent,
+  @EventPattern(NOTIFICATION_REQUESTED_PATTERN)
+  async handleNotificationRequested(
+    @Payload() data: NotificationRequestedEvent,
   ): Promise<void> {
-    // Le destinataire est une adresse de service, pas un compte MS-User :
-    // c'est le recipientEmail porte par le job qui fait foi cote consumer.
-    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
-    const adminUserId = process.env.ADMIN_USER_ID || 'admin';
+    // Passe-plat : destinataire, objet, contenu et canaux viennent de
+    // l'emetteur, rien n'est decide ici.
+    const userId = data?.user_id;
+    const channels = data?.channels ?? [];
 
     this.logger.log(
-      `Event ${TRANSIT_NETWORK_AGGREGATED_PATTERN} reçu (network_id=${
-        data?.network_id ?? 'inconnu'
-      }, status=${data?.status ?? 'inconnu'}).`,
+      `Event ${NOTIFICATION_REQUESTED_PATTERN} reçu (triggered_by=${
+        data?.triggered_by ?? 'inconnu'
+      }, type=${data?.type ?? 'inconnu'}, user_id=${userId ?? 'inconnu'}).`,
     );
 
-    if (!adminEmail) {
+    if (!userId || !data?.content || !data?.type || channels.length === 0) {
       this.logger.warn(
-        `Event ${TRANSIT_NETWORK_AGGREGATED_PATTERN} ignoré : ADMIN_NOTIFICATION_EMAIL n'est pas configuré.`,
+        `Event ${NOTIFICATION_REQUESTED_PATTERN} ignoré : user_id, content, type et/ou channels manquant dans le payload.`,
+      );
+      return;
+    }
+
+    // Aucune adresse n'est resolue ici : sans recipient_email, le canal EMAIL
+    // ne pourrait rien livrer.
+    if (channels.includes('EMAIL') && !data.recipient_email) {
+      this.logger.warn(
+        `Event ${NOTIFICATION_REQUESTED_PATTERN} ignoré : canal EMAIL demandé sans recipient_email.`,
       );
       return;
     }
 
     try {
       const notification = await this.dispatcher.dispatch({
-        userId: adminUserId,
-        content: this.buildAggregationContent(data),
-        type:
-          data?.status === 'ok' ? 'AGGREGATION_SUCCESS' : 'AGGREGATION_ERROR',
-        source: `rabbitmq:${TRANSIT_NETWORK_AGGREGATED_PATTERN}`,
-        triggeredBy: 'ms-admin',
-        channels: ['EMAIL'],
-        recipientEmail: adminEmail,
+        userId,
+        content: data.content,
+        type: data.type,
+        source: `rabbitmq:${NOTIFICATION_REQUESTED_PATTERN}`,
+        triggeredBy: data.triggered_by,
+        channels,
+        recipientEmail: data.recipient_email ?? undefined,
+        recipientDisabledChannels: data.disabled_channels ?? [],
+        subject: data.subject ?? undefined,
       });
 
       this.logger.log(
-        `Notification ${notification.id} créée et job EMAIL publié pour l'admin (network_id=${data?.network_id}).`,
+        `Notification ${notification.id} créée et job(s) ${channels.join(', ')} publié(s) pour user_id=${userId} (triggered_by=${data.triggered_by}, type=${data.type}).`,
       );
     } catch (err) {
       this.logger.error(
-        `Échec du traitement de ${TRANSIT_NETWORK_AGGREGATED_PATTERN} pour network_id=${data?.network_id}.`,
+        `Échec du traitement de ${NOTIFICATION_REQUESTED_PATTERN} pour user_id=${userId} (triggered_by=${data.triggered_by}, type=${data.type}).`,
         err instanceof Error ? err.stack : String(err),
       );
     }
-  }
-
-  private buildAggregationContent(data: TransitNetworkAggregatedEvent): string {
-    const reseau = data?.network_name?.trim() || data?.network_id;
-
-    if (data?.status === 'ok') {
-      return `L'agrégation du réseau « ${reseau} » s'est terminée avec succès : les données sont disponibles.`;
-    }
-
-    const raison = data?.error?.trim();
-    return raison
-      ? `L'agrégation du réseau « ${reseau} » a échoué : ${raison}`
-      : `L'agrégation du réseau « ${reseau} » a échoué.`;
   }
 
   private async dispatchEmailNotification(params: {

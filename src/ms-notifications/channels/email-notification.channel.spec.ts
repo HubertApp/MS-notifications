@@ -87,21 +87,27 @@ describe('EmailNotificationChannel', () => {
     expect(message.html).toContain('&lt;script&gt;');
   });
 
-  it.each([
-    ['AGGREGATION_SUCCESS', 'Agrégation terminée — HubertApp'],
-    ['AGGREGATION_ERROR', "Échec d'agrégation — HubertApp"],
-  ])('shouldUseADedicatedSubjectFor%s', async (type, sujet) => {
+  it('shouldUseTheSubjectProvidedByTheEmitter', async () => {
     await channel.send(
-      { ...baseNotification, type, content: "L'agrégation du réseau « X » a abouti." },
+      { ...baseNotification, type: 'INFO', subject: 'Objet de l’émetteur', content: 'peu importe' },
       { userId: 'admin', email: 'admin@hubertapp.local' },
     );
 
-    expect(mockMailProvider.send.mock.calls[0][0].subject).toBe(sujet);
+    expect(mockMailProvider.send.mock.calls[0][0].subject).toBe('Objet de l’émetteur');
+  });
+
+  it('shouldFallBackToAGenericSubjectWhenNoneIsProvided', async () => {
+    await channel.send(
+      { ...baseNotification, type: 'INFO', content: 'peu importe' },
+      { userId: 'admin', email: 'admin@hubertapp.local' },
+    );
+
+    expect(mockMailProvider.send.mock.calls[0][0].subject).toBe('Nouvelle notification HubertApp');
   });
 
   it('shouldNotClaimAccountCreationAsTheReasonForANonWelcomeEmail', async () => {
     await channel.send(
-      { ...baseNotification, type: 'AGGREGATION_SUCCESS', content: 'peu importe' },
+      { ...baseNotification, type: 'INFO', content: 'peu importe' },
       { userId: 'admin', email: 'admin@hubertapp.local' },
     );
 
