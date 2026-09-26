@@ -11,6 +11,14 @@ export * from './email-template.interface';
 const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
   WELCOME: welcomeEmailTemplate,
   ACCOUNT_DELETED: accountDeletedEmailTemplate,
+  AGGREGATION_SUCCESS: {
+    ...genericEmailTemplate,
+    subject: 'Agrégation terminée — HubertApp',
+  },
+  AGGREGATION_ERROR: {
+    ...genericEmailTemplate,
+    subject: "Échec d'agrégation — HubertApp",
+  },
 };
 
 export function getEmailTemplate(notificationType: string): EmailTemplate {

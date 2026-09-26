@@ -191,4 +191,66 @@ describe('NotificationsController', () => {
       );
     });
   });
+
+  describe('handleTransitNetworkAggregated', () => {
+    const envInitial = { ...process.env };
+
+    beforeEach(() => {
+      process.env.ADMIN_NOTIFICATION_EMAIL = 'admin@hubertapp.local';
+      process.env.ADMIN_USER_ID = 'admin';
+    });
+
+    afterEach(() => {
+      process.env = { ...envInitial };
+    });
+
+    it('shouldEmailTheConfiguredAdminWhenAggregationSucceeds', async () => {
+      await controller.handleTransitNetworkAggregated({
+        network_id: 'net-1',
+        network_name: 'Réseau test',
+        status: 'ok',
+        error: null,
+      });
+
+      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'admin',
+          recipientEmail: 'admin@hubertapp.local',
+          channels: ['EMAIL'],
+          type: 'AGGREGATION_SUCCESS',
+          source: 'rabbitmq:transit_network_aggregated',
+          triggeredBy: 'ms-admin',
+        }),
+      );
+      expect(mockDispatcher.dispatch.mock.calls[0][0].content).toContain(
+        'Réseau test',
+      );
+    });
+
+    it('shouldEmailTheConfiguredAdminWithTheReasonWhenAggregationFails', async () => {
+      await controller.handleTransitNetworkAggregated({
+        network_id: 'net-1',
+        status: 'error',
+        error: 'flux corrompu',
+      });
+
+      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'AGGREGATION_ERROR' }),
+      );
+      expect(mockDispatcher.dispatch.mock.calls[0][0].content).toContain(
+        'flux corrompu',
+      );
+    });
+
+    it('shouldNotDispatchAnythingWhenNoAdminEmailIsConfigured', async () => {
+      delete process.env.ADMIN_NOTIFICATION_EMAIL;
+
+      await controller.handleTransitNetworkAggregated({
+        network_id: 'net-1',
+        status: 'ok',
+      });
+
+      expect(mockDispatcher.dispatch).not.toHaveBeenCalled();
+    });
+  });
 });

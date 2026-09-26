@@ -47,6 +47,7 @@ Le point central de cette architecture : **la persistance de la notification et 
 Deux façons de créer une notification :
 
 - **Event RabbitMQ `user_created`** (`ms-notifications.controller.ts`) : consommé automatiquement à l'inscription d'un nouvel utilisateur (queue `notifications_queue`), déclenche une notification de bienvenue avec canal `EMAIL`, l'e-mail venant directement du payload de l'événement (`recipientEmail`).
+- **Event RabbitMQ `transit_network_aggregated`** (`ms-notifications.controller.ts`) : émis par MS-Admin sur la même queue `notifications_queue` à chaque retour d'agrégation d'un réseau de transport, succès comme échec. Déclenche un mail au compte admin configuré (`ADMIN_NOTIFICATION_EMAIL`), type `AGGREGATION_SUCCESS` ou `AGGREGATION_ERROR`. MS-Admin étant en Python, il construit à la main l'enveloppe `{ pattern, data }` attendue par le transport RMQ de Nest.
 - **Mutation GraphQL `createNotification`** (`ms-notifications.resolver.ts`) : appelable par un utilisateur authentifié (pour lui-même) ou par un service interne avec le rôle `SERVICE` (pour un tiers). Prend `userId`, `content`, `type`, et optionnellement `channels: [String!]` (ex: `["EMAIL"]`).
 
 Les deux passent par `NotificationDispatcherService.dispatch()`.
@@ -76,7 +77,7 @@ Toutes les stratégies sont injectées comme un tableau via un provider factory 
 
 ### Abstraction mail : `MailProvider`
 
-`src/mail/mail-provider.interface.ts` définit `MailProvider.send(message)`. Implémentation par défaut : `SmtpMailProvider` (nodemailer), entièrement configurée par variables d'environnement (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`). Si `SMTP_HOST` n'est pas défini, l'envoi est simplement logué au lieu de planter — pratique en dev local sans serveur SMTP réel. Changer de fournisseur (SendGrid, SES...) = implémenter `MailProvider` autrement, sans toucher au reste.
+`src/mail/mail-provider.interface.ts` définit `MailProvider.send(message)`. Implémentation par défaut : `SmtpMailProvider` (nodemailer), entièrement configurée par variables d'environnement (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`). Si `SMTP_HOST` n'est pas défini, l'envoi est simplement logué au lieu de planter — pratique en dev local sans serveur SMTP réel. Changer de fournisseur (SendGrid, SES...) = implémenter `MailProvider` autrement, sans toucher au reste.
 
 ## 4. Résolution de l'e-mail — décision de sécurité
 
@@ -165,7 +166,9 @@ Comme documenté dans `AUDIT.md`, ce guard fait confiance aux headers sans véri
 | `MONGO_URL` | Connexion MongoDB pour la persistance des notifications |
 | `RABBITMQ_URL` | Connexion RabbitMQ pour `notification_delivery_queue` / `notification_delivery_failed_queue` (défaut `amqp://rabbitmq:5672`) |
 | `MS_USER_URL` | Endpoint GraphQL de MS-User, utilisé par `UserLookupService` |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Configuration du serveur SMTP réel ; si `SMTP_HOST` absent, envoi simulé (log uniquement) |
+| `ADMIN_NOTIFICATION_EMAIL` | Destinataire des notifications d'exploitation (`transit_network_aggregated`) ; si absent, l'événement est ignoré |
+| `ADMIN_USER_ID` | Clé de persistance de ces notifications en base, défaut `admin` ; ne correspond à aucun compte MS-User |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | Configuration du serveur SMTP réel ; si `SMTP_HOST` absent, envoi simulé (log uniquement) |
 
 Note : la connexion RabbitMQ historique (`notifications_queue` / event `user_created`, dans `main.ts`) garde une URL codée en dur plutôt que `RABBITMQ_URL` — incohérence mineure documentée dans `AUDIT.md`, sans impact tant que la valeur par défaut n'est pas changée.
 

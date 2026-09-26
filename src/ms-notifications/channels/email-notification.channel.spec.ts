@@ -86,4 +86,26 @@ describe('EmailNotificationChannel', () => {
     expect(message.html).not.toContain('<script>');
     expect(message.html).toContain('&lt;script&gt;');
   });
+
+  it.each([
+    ['AGGREGATION_SUCCESS', 'Agrégation terminée — HubertApp'],
+    ['AGGREGATION_ERROR', "Échec d'agrégation — HubertApp"],
+  ])('shouldUseADedicatedSubjectFor%s', async (type, sujet) => {
+    await channel.send(
+      { ...baseNotification, type, content: "L'agrégation du réseau « X » a abouti." },
+      { userId: 'admin', email: 'admin@hubertapp.local' },
+    );
+
+    expect(mockMailProvider.send.mock.calls[0][0].subject).toBe(sujet);
+  });
+
+  it('shouldNotClaimAccountCreationAsTheReasonForANonWelcomeEmail', async () => {
+    await channel.send(
+      { ...baseNotification, type: 'AGGREGATION_SUCCESS', content: 'peu importe' },
+      { userId: 'admin', email: 'admin@hubertapp.local' },
+    );
+
+    const message = mockMailProvider.send.mock.calls[0][0];
+    expect(message.html).not.toContain('création de votre compte');
+  });
 });
