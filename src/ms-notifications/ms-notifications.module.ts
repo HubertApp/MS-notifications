@@ -15,7 +15,6 @@ import { InAppNotificationChannel } from './channels/in-app-notification.channel
 import { EmailNotificationChannel } from './channels/email-notification.channel';
 import { MAIL_PROVIDER } from '../mail/mail-provider.interface';
 import { SmtpMailProvider } from '../mail/smtp-mail.provider';
-import { UserLookupService } from './user-lookup.service';
 import {
   NOTIFICATION_DELIVERY_CLIENT,
   NOTIFICATION_DELIVERY_FAILED_CLIENT,
@@ -91,7 +90,6 @@ const socketOptions = buildSocketOptions();
     NotificationsService,
     NotificationDispatcherService,
     NotificationDeliveryPublisher,
-    UserLookupService,
     NotificationsResolver,
     UsersResolver,
 

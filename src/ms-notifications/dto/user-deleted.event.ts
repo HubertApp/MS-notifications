@@ -14,4 +14,6 @@ export interface UserDeletedEvent {
   occurred_at?: string;
 
   googleId?: string;
+
+  disabledChannels?: string[];
 }

@@ -20,6 +20,7 @@ describe('NotificationsController', () => {
         user_id: 'user-1',
         email: 'user1@test.com',
         pseudo: 'Alice',
+        disabledChannels: [],
       });
 
       expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
@@ -28,6 +29,7 @@ describe('NotificationsController', () => {
           type: 'WELCOME',
           channels: ['EMAIL'],
           recipientEmail: 'user1@test.com',
+          recipientDisabledChannels: [],
           source: 'rabbitmq:user_created',
         }),
       );
@@ -76,6 +78,34 @@ describe('NotificationsController', () => {
         }),
       ).resolves.toBeUndefined();
     });
+
+    it('should pass disabledChannels to the dispatcher', async () => {
+      await controller.handleUserCreated({
+        user_id: 'user-1',
+        email: 'user1@test.com',
+        pseudo: 'Alice',
+        disabledChannels: ['EMAIL'],
+      });
+
+      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientDisabledChannels: ['EMAIL'],
+        }),
+      );
+    });
+
+    it('should default to empty array when disabledChannels is missing', async () => {
+      await controller.handleUserCreated({
+        user_id: 'user-1',
+        email: 'user1@test.com',
+      });
+
+      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientDisabledChannels: [],
+        }),
+      );
+    });
   });
 
   describe('handleUserDeleted', () => {
@@ -84,6 +114,7 @@ describe('NotificationsController', () => {
         user_id: 'user-1',
         email: 'user1@test.com',
         pseudo: 'Alice',
+        disabledChannels: [],
       });
 
       expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
@@ -92,6 +123,7 @@ describe('NotificationsController', () => {
           type: 'ACCOUNT_DELETED',
           channels: ['EMAIL'],
           recipientEmail: 'user1@test.com',
+          recipientDisabledChannels: [],
           source: 'rabbitmq:user_deleted',
         }),
       );
@@ -129,6 +161,33 @@ describe('NotificationsController', () => {
 
       expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'ACCOUNT_DELETED' }),
+      );
+    });
+
+    it('should pass disabledChannels to the dispatcher', async () => {
+      await controller.handleUserDeleted({
+        user_id: 'user-1',
+        email: 'user1@test.com',
+        disabledChannels: ['EMAIL'],
+      });
+
+      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientDisabledChannels: ['EMAIL'],
+        }),
+      );
+    });
+
+    it('should default to empty array when disabledChannels is missing', async () => {
+      await controller.handleUserDeleted({
+        user_id: 'user-1',
+        email: 'user1@test.com',
+      });
+
+      expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientDisabledChannels: [],
+        }),
       );
     });
   });

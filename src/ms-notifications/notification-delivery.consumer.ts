@@ -10,7 +10,6 @@ import type {
   NotificationChannel,
   NotificationRecipient,
 } from './channels/notification-channel.interface';
-import { UserLookupService } from './user-lookup.service';
 
 // Voir ARCHITECTURE.md §5 (retry/backoff) et §3 (pattern Stratégie).
 const MAX_ATTEMPTS = 5;
@@ -35,7 +34,6 @@ export class NotificationDeliveryConsumer {
   private readonly logger = new Logger(NotificationDeliveryConsumer.name);
 
   constructor(
-    private readonly userLookup: UserLookupService,
     private readonly publisher: NotificationDeliveryPublisher,
     @Inject(NOTIFICATION_CHANNELS)
     private readonly channels: NotificationChannel[],
@@ -59,12 +57,11 @@ export class NotificationDeliveryConsumer {
     }
 
     try {
-      const recipientInfo = await this.userLookup.getRecipientInfo(job.userId);
-      const email = job.email ?? recipientInfo?.email;
+      // Toutes les données nécessaires sont dans le job (venant de RabbitMQ)
       const recipient: NotificationRecipient = {
         userId: job.userId,
-        email,
-        disabledChannels: recipientInfo?.disabledChannels ?? [],
+        email: job.email,
+        disabledChannels: job.disabledChannels ?? [],
       };
 
       const isTransactional = TRANSACTIONAL_TYPES.includes(job.type);

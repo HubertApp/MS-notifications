@@ -10,6 +10,7 @@ export interface DispatchNotificationParams extends CreateNotificationParams {
   channels?: string[];
   // Jamais exposé côté GraphQL, voir ARCHITECTURE.md §4.
   recipientEmail?: string;
+  recipientDisabledChannels?: string[];
 }
 
 // Persiste puis publie un job par canal (voir ARCHITECTURE.md §5).
@@ -23,7 +24,7 @@ export class NotificationDispatcherService {
   ) {}
 
   async dispatch(params: DispatchNotificationParams): Promise<Notification> {
-    const { channels: requestedTypes = [], recipientEmail, ...createParams } = params;
+    const { channels: requestedTypes = [], recipientEmail, recipientDisabledChannels, ...createParams } = params;
 
     const notification = await this.notificationsService.create(createParams);
 
@@ -37,6 +38,7 @@ export class NotificationDispatcherService {
         type: notification.type,
         channelType,
         email: recipientEmail,
+        disabledChannels: recipientDisabledChannels ?? [],
       });
     }
 

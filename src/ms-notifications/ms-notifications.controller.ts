@@ -40,6 +40,7 @@ export class NotificationsController {
       content: this.buildWelcomeContent(data),
       type: this.typeFromTemplate(data?.template, 'WELCOME'),
       triggeredBy: 'ms-user',
+      disabledChannels: data?.disabledChannels ?? [],
     });
   }
 
@@ -68,6 +69,7 @@ export class NotificationsController {
       content: 'Votre compte HubertApp a bien été supprimé.',
       type: this.typeFromTemplate(data?.template, 'ACCOUNT_DELETED'),
       triggeredBy: 'ms-user',
+      disabledChannels: data?.disabledChannels ?? [],
     });
   }
 
@@ -78,6 +80,7 @@ export class NotificationsController {
     content: string;
     type: string;
     triggeredBy: string;
+    disabledChannels: string[];
   }): Promise<void> {
     try {
       const notification = await this.dispatcher.dispatch({
@@ -88,6 +91,7 @@ export class NotificationsController {
         triggeredBy: params.triggeredBy,
         channels: ['EMAIL'],
         recipientEmail: params.email,
+        recipientDisabledChannels: params.disabledChannels,
       });
 
       this.logger.log(

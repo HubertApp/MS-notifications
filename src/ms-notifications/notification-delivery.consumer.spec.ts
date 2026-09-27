@@ -4,7 +4,6 @@ import { NotificationDeliveryJob } from './notification-delivery.publisher';
 
 describe('NotificationDeliveryConsumer', () => {
   let consumer: NotificationDeliveryConsumer;
-  let mockUserLookup: { getRecipientInfo: jest.Mock };
   let mockPublisher: { publishJob: jest.Mock; publishFailed: jest.Mock };
   let mockEmailChannel: { type: string; supports: jest.Mock; send: jest.Mock };
   let ack: jest.Mock;
@@ -16,6 +15,8 @@ describe('NotificationDeliveryConsumer', () => {
     type: 'WELCOME',
     channelType: 'EMAIL',
     attempts: 0,
+    email: 'user@example.com',
+    disabledChannels: [],
   };
 
   function makeContext(): RmqContext {
@@ -29,11 +30,6 @@ describe('NotificationDeliveryConsumer', () => {
   }
 
   beforeEach(() => {
-    mockUserLookup = {
-      getRecipientInfo: jest
-        .fn()
-        .mockResolvedValue({ email: 'user@example.com', disabledChannels: [] }),
-    };
     mockPublisher = {
       publishJob: jest.fn().mockResolvedValue(undefined),
       publishFailed: jest.fn().mockResolvedValue(undefined),
@@ -45,7 +41,6 @@ describe('NotificationDeliveryConsumer', () => {
     };
 
     consumer = new NotificationDeliveryConsumer(
-      mockUserLookup as any,
       mockPublisher as any,
       [mockEmailChannel as any],
     );
@@ -62,29 +57,25 @@ describe('NotificationDeliveryConsumer', () => {
     expect(mockPublisher.publishFailed).not.toHaveBeenCalled();
   });
 
-  it('shouldUseTheEmailAlreadyProvidedInTheJobEvenIfUserLookupReturnsAnother', async () => {
+  it('shouldUseTheEmailFromTheJob', async () => {
     const ctx = makeContext();
 
-    await consumer.handleDelivery({ ...baseJob, email: 'already@example.com' }, ctx);
+    await consumer.handleDelivery({ ...baseJob, email: 'provided@example.com' }, ctx);
 
-    // getRecipientInfo est quand même appelé : les préférences ne sont
-    // jamais portées par le job, seul l'email peut déjà y être présent.
-    expect(mockUserLookup.getRecipientInfo).toHaveBeenCalledWith('user-123');
     expect(mockEmailChannel.send).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ email: 'already@example.com' }),
+      expect.objectContaining({ email: 'provided@example.com' }),
     );
   });
 
-  it('shouldResolveTheEmailViaUserLookupWhenNotProvided', async () => {
+  it('shouldUseDisabledChannelsFromTheJob', async () => {
     const ctx = makeContext();
 
-    await consumer.handleDelivery(baseJob, ctx);
+    await consumer.handleDelivery({ ...baseJob, disabledChannels: ['SMS'] }, ctx);
 
-    expect(mockUserLookup.getRecipientInfo).toHaveBeenCalledWith('user-123');
     expect(mockEmailChannel.send).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ email: 'user@example.com' }),
+      expect.objectContaining({ disabledChannels: ['SMS'] }),
     );
   });
 
@@ -95,27 +86,23 @@ describe('NotificationDeliveryConsumer', () => {
     });
     const ctx = makeContext();
 
-    await consumer.handleDelivery(baseJob, ctx);
+    await consumer.handleDelivery({
+      ...baseJob,
+      disabledChannels: ['EMAIL'],
+    }, ctx);
 
     expect(mockEmailChannel.send).not.toHaveBeenCalled();
     expect(ack).toHaveBeenCalledTimes(1);
   });
 
   it('shouldStillSendAnAccountDeletedEmailEvenWhenTheChannelIsDisabledByUserPreferences', async () => {
-    mockUserLookup.getRecipientInfo.mockResolvedValue({
-      email: 'user@example.com',
-      disabledChannels: ['EMAIL'],
-    });
     const ctx = makeContext();
 
-    await consumer.handleDelivery(
-      { ...baseJob, type: 'ACCOUNT_DELETED' },
-      ctx,
-    );
-
-    expect(mockEmailChannel.send).toHaveBeenCalledTimes(1);
-    expect(ack).toHaveBeenCalledTimes(1);
-  });
+    await consumer.handleDelivery({
+      ...baseJob,
+      type: 'ACCOUNT_DELETED',
+      disabledChannels: ['EMAIL'],
+    }, ctx;
 
   it('shouldAckAndSkipWhenTheChannelTypeIsUnknown', async () => {
     const ctx = makeContext();

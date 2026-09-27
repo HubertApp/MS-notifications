@@ -16,4 +16,6 @@ export interface UserCreatedEvent {
   occurred_at?: string;
 
   googleId?: string;
+
+  disabledChannels?: string[];
 }
