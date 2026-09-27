@@ -112,12 +112,6 @@ describe('MS-notifications (performance)', () => {
     beforeEach(() => {
       sendCallCount = 0;
 
-      const mockUserLookup = {
-        getRecipientInfo: jest.fn().mockResolvedValue({
-          email: 'user@example.com',
-          disabledChannels: [],
-        }),
-      };
       const mockPublisher = { publishJob: jest.fn(), publishFailed: jest.fn() };
       const emailChannel: NotificationChannel = {
         type: 'EMAIL',
@@ -129,7 +123,6 @@ describe('MS-notifications (performance)', () => {
       };
 
       consumer = new NotificationDeliveryConsumer(
-        mockUserLookup as any,
         mockPublisher as any,
         [emailChannel],
       );
@@ -148,6 +141,8 @@ describe('MS-notifications (performance)', () => {
             type: 'WELCOME',
             channelType: 'EMAIL',
             attempts: 0,
+            email: 'user@example.com',
+            disabledChannels: [],
           },
           mockRmqContext(),
         );
@@ -180,12 +175,6 @@ describe('MS-notifications (performance)', () => {
       }).compile();
       const dispatcher = module.get(NotificationDispatcherService);
 
-      const mockUserLookup = {
-        getRecipientInfo: jest.fn().mockResolvedValue({
-          email: 'user@example.com',
-          disabledChannels: [],
-        }),
-      };
       const mockDeliveryPublisher = {
         publishJob: jest.fn(),
         publishFailed: jest.fn(),
@@ -198,7 +187,6 @@ describe('MS-notifications (performance)', () => {
         },
       };
       const consumer = new NotificationDeliveryConsumer(
-        mockUserLookup as any,
         mockDeliveryPublisher as any,
         [stuckChannel],
       );
@@ -210,6 +198,8 @@ describe('MS-notifications (performance)', () => {
           type: 'WELCOME',
           channelType: 'EMAIL',
           attempts: 0,
+          email: 'user@example.com',
+          disabledChannels: [],
         },
         mockRmqContext(),
       );
