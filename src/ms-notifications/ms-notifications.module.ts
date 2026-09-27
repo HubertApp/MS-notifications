@@ -4,13 +4,19 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { NotificationsService } from './ms-notifications.service';
 import { NotificationDispatcherService } from './ms-notifications-dispatcher.service';
-import { NotificationsResolver, UsersResolver } from './ms-notifications.resolver';
+import {
+  NotificationsResolver,
+  UsersResolver,
+} from './ms-notifications.resolver';
 import { NotificationsController } from './ms-notifications.controller';
 import {
   NotificationMongooseSchema,
   NotificationSchema,
 } from './schema/notification.schema';
-import { NOTIFICATION_CHANNELS, NotificationChannel } from './channels/notification-channel.interface';
+import {
+  NOTIFICATION_CHANNELS,
+  NotificationChannel,
+} from './channels/notification-channel.interface';
 import { InAppNotificationChannel } from './channels/in-app-notification.channel';
 import { EmailNotificationChannel } from './channels/email-notification.channel';
 import { MAIL_PROVIDER } from '../mail/mail-provider.interface';

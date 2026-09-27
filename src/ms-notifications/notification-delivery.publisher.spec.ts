@@ -61,12 +61,17 @@ describe('NotificationDeliveryPublisher', () => {
 
     expect(mockFailedClient.emit).toHaveBeenCalledWith(
       'notification_delivery_failed',
-      expect.objectContaining({ notificationId: 'notif-1', failureReason: 'SMTP down' }),
+      expect.objectContaining({
+        notificationId: 'notif-1',
+        failureReason: 'SMTP down',
+      }),
     );
   });
 
   it('shouldNotThrowWhenTheBrokerIsUnreachable', async () => {
-    mockClient.emit.mockReturnValue(throwError(() => new Error('connect ECONNREFUSED')));
+    mockClient.emit.mockReturnValue(
+      throwError(() => new Error('connect ECONNREFUSED')),
+    );
 
     await expect(
       publisher.publish({

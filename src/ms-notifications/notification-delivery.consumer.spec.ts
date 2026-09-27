@@ -40,10 +40,9 @@ describe('NotificationDeliveryConsumer', () => {
       send: jest.fn().mockResolvedValue(undefined),
     };
 
-    consumer = new NotificationDeliveryConsumer(
-      mockPublisher as any,
-      [mockEmailChannel as any],
-    );
+    consumer = new NotificationDeliveryConsumer(mockPublisher as any, [
+      mockEmailChannel as any,
+    ]);
   });
 
   it('shouldAckAndSendWhenDeliverySucceeds', async () => {
@@ -60,7 +59,10 @@ describe('NotificationDeliveryConsumer', () => {
   it('shouldUseTheEmailFromTheJob', async () => {
     const ctx = makeContext();
 
-    await consumer.handleDelivery({ ...baseJob, email: 'provided@example.com' }, ctx);
+    await consumer.handleDelivery(
+      { ...baseJob, email: 'provided@example.com' },
+      ctx,
+    );
 
     expect(mockEmailChannel.send).toHaveBeenCalledWith(
       expect.anything(),
@@ -71,7 +73,10 @@ describe('NotificationDeliveryConsumer', () => {
   it('shouldUseDisabledChannelsFromTheJob', async () => {
     const ctx = makeContext();
 
-    await consumer.handleDelivery({ ...baseJob, disabledChannels: ['SMS'] }, ctx);
+    await consumer.handleDelivery(
+      { ...baseJob, disabledChannels: ['SMS'] },
+      ctx,
+    );
 
     expect(mockEmailChannel.send).toHaveBeenCalledWith(
       expect.anything(),
@@ -86,10 +91,13 @@ describe('NotificationDeliveryConsumer', () => {
     });
     const ctx = makeContext();
 
-    await consumer.handleDelivery({
-      ...baseJob,
-      disabledChannels: ['EMAIL'],
-    }, ctx);
+    await consumer.handleDelivery(
+      {
+        ...baseJob,
+        disabledChannels: ['EMAIL'],
+      },
+      ctx,
+    );
 
     expect(mockEmailChannel.send).not.toHaveBeenCalled();
     expect(ack).toHaveBeenCalledTimes(1);
@@ -98,11 +106,18 @@ describe('NotificationDeliveryConsumer', () => {
   it('shouldStillSendAnAccountDeletedEmailEvenWhenTheChannelIsDisabledByUserPreferences', async () => {
     const ctx = makeContext();
 
-    await consumer.handleDelivery({
-      ...baseJob,
-      type: 'ACCOUNT_DELETED',
-      disabledChannels: ['EMAIL'],
-    }, ctx;
+    await consumer.handleDelivery(
+      {
+        ...baseJob,
+        type: 'ACCOUNT_DELETED',
+        disabledChannels: ['EMAIL'],
+      },
+      ctx,
+    );
+
+    expect(mockEmailChannel.send).toHaveBeenCalledTimes(1);
+    expect(ack).toHaveBeenCalledTimes(1);
+  });
 
   it('shouldAckAndSkipWhenTheChannelTypeIsUnknown', async () => {
     const ctx = makeContext();

@@ -24,7 +24,12 @@ export class NotificationDispatcherService {
   ) {}
 
   async dispatch(params: DispatchNotificationParams): Promise<Notification> {
-    const { channels: requestedTypes = [], recipientEmail, recipientDisabledChannels, ...createParams } = params;
+    const {
+      channels: requestedTypes = [],
+      recipientEmail,
+      recipientDisabledChannels,
+      ...createParams
+    } = params;
 
     const notification = await this.notificationsService.create(createParams);
 

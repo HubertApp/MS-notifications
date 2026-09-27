@@ -16,7 +16,10 @@ export interface NotificationChannel {
   supports(recipient: NotificationRecipient): boolean;
 
   /** Livre effectivement la notification via ce canal. */
-  send(notification: Notification, recipient: NotificationRecipient): Promise<void>;
+  send(
+    notification: Notification,
+    recipient: NotificationRecipient,
+  ): Promise<void>;
 }
 
 export const NOTIFICATION_CHANNELS = Symbol('NOTIFICATION_CHANNELS');

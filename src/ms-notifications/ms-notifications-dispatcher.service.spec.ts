@@ -36,7 +36,9 @@ describe('NotificationDispatcherService', () => {
       ],
     }).compile();
 
-    dispatcher = module.get<NotificationDispatcherService>(NotificationDispatcherService);
+    dispatcher = module.get<NotificationDispatcherService>(
+      NotificationDispatcherService,
+    );
   });
 
   it('shouldAlwaysPersistTheNotification', async () => {

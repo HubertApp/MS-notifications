@@ -10,7 +10,8 @@ export class NotificationDeliveryFailedConsumer {
 
   @EventPattern(NOTIFICATION_DELIVERY_FAILED_PATTERN)
   handleFailedDelivery(
-    @Payload() job: NotificationDeliveryJob & { failureReason: string; failedAt: string },
+    @Payload()
+    job: NotificationDeliveryJob & { failureReason: string; failedAt: string },
   ): void {
     this.logger.error(
       `Livraison abandonnée définitivement : canal="${job.channelType}" notif=${job.notificationId} user_id=${job.userId} après ${job.attempts} essais. Raison : ${job.failureReason}`,

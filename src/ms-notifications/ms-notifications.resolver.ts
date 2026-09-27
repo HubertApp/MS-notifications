@@ -1,5 +1,12 @@
 // src/ms-notifications/ms-notifications.resolver.ts
-import { Resolver, Query, Mutation, Args, ResolveField, Parent } from '@nestjs/graphql';
+import {
+  Resolver,
+  Query,
+  Mutation,
+  Args,
+  ResolveField,
+  Parent,
+} from '@nestjs/graphql';
 import { ForbiddenException, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './ms-notifications.service';
 import { NotificationDispatcherService } from './ms-notifications-dispatcher.service';
@@ -20,7 +27,10 @@ export class UsersResolver {
 
 @Resolver('Notification')
 export class NotificationsResolver {
-  constructor(private readonly dispatcher: NotificationDispatcherService, private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly dispatcher: NotificationDispatcherService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   // Ne renvoie que les notifications de l'appelant, voir ARCHITECTURE.md §6.
   @Query('getAllNotifications')

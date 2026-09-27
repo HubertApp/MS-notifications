@@ -14,7 +14,8 @@ describe('accountDeletedEmailTemplate', () => {
     },
     recipient: { userId: 'user-1', email: 'user@example.com' },
     frontUrl: 'https://front.hubertapp.example',
-    unsubscribeUrl: 'https://front.hubertapp.example/desabonnement?userId=user-1',
+    unsubscribeUrl:
+      'https://front.hubertapp.example/desabonnement?userId=user-1',
     escapeHtml: (text) => text,
   };
 

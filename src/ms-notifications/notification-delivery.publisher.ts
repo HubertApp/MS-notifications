@@ -15,9 +15,11 @@ export interface NotificationDeliveryJob {
 }
 
 export const NOTIFICATION_DELIVERY_CLIENT = 'NOTIFICATION_DELIVERY_CLIENT';
-export const NOTIFICATION_DELIVERY_FAILED_CLIENT = 'NOTIFICATION_DELIVERY_FAILED_CLIENT';
+export const NOTIFICATION_DELIVERY_FAILED_CLIENT =
+  'NOTIFICATION_DELIVERY_FAILED_CLIENT';
 export const NOTIFICATION_DELIVERY_PATTERN = 'notification_delivery';
-export const NOTIFICATION_DELIVERY_FAILED_PATTERN = 'notification_delivery_failed';
+export const NOTIFICATION_DELIVERY_FAILED_PATTERN =
+  'notification_delivery_failed';
 
 @Injectable()
 export class NotificationDeliveryPublisher {
@@ -35,7 +37,9 @@ export class NotificationDeliveryPublisher {
 
   async publishJob(job: NotificationDeliveryJob): Promise<void> {
     try {
-      await firstValueFrom(this.client.emit(NOTIFICATION_DELIVERY_PATTERN, job));
+      await firstValueFrom(
+        this.client.emit(NOTIFICATION_DELIVERY_PATTERN, job),
+      );
     } catch (err) {
       this.logger.error(
         `Impossible de publier le job de livraison "${job.channelType}" pour la notif ${job.notificationId}.`,
@@ -44,7 +48,10 @@ export class NotificationDeliveryPublisher {
     }
   }
 
-  async publishFailed(job: NotificationDeliveryJob, reason: string): Promise<void> {
+  async publishFailed(
+    job: NotificationDeliveryJob,
+    reason: string,
+  ): Promise<void> {
     try {
       await firstValueFrom(
         this.failedClient.emit(NOTIFICATION_DELIVERY_FAILED_PATTERN, {
