@@ -52,7 +52,7 @@ export class EmailNotificationChannel implements NotificationChannel {
 
     await this.mailProvider.send({
       to: recipient.email,
-      subject: template.subject,
+      subject: notification.subject || template.subject,
       text: notification.content,
       html: renderEmailLayout(content),
     });

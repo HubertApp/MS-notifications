@@ -86,4 +86,32 @@ describe('EmailNotificationChannel', () => {
     expect(message.html).not.toContain('<script>');
     expect(message.html).toContain('&lt;script&gt;');
   });
+
+  it('shouldUseTheSubjectProvidedByTheEmitter', async () => {
+    await channel.send(
+      { ...baseNotification, type: 'INFO', subject: 'Objet de l’émetteur', content: 'peu importe' },
+      { userId: 'admin', email: 'admin@hubertapp.local' },
+    );
+
+    expect(mockMailProvider.send.mock.calls[0][0].subject).toBe('Objet de l’émetteur');
+  });
+
+  it('shouldFallBackToAGenericSubjectWhenNoneIsProvided', async () => {
+    await channel.send(
+      { ...baseNotification, type: 'INFO', content: 'peu importe' },
+      { userId: 'admin', email: 'admin@hubertapp.local' },
+    );
+
+    expect(mockMailProvider.send.mock.calls[0][0].subject).toBe('Nouvelle notification HubertApp');
+  });
+
+  it('shouldNotClaimAccountCreationAsTheReasonForANonWelcomeEmail', async () => {
+    await channel.send(
+      { ...baseNotification, type: 'INFO', content: 'peu importe' },
+      { userId: 'admin', email: 'admin@hubertapp.local' },
+    );
+
+    const message = mockMailProvider.send.mock.calls[0][0];
+    expect(message.html).not.toContain('création de votre compte');
+  });
 });

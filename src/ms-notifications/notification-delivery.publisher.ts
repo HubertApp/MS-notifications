@@ -10,6 +10,7 @@ export interface NotificationDeliveryJob {
   type: string;
   channelType: string;
   email?: string;
+  subject?: string;
   disabledChannels?: string[];
   attempts: number;
 }

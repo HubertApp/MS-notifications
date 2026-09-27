@@ -88,6 +88,22 @@ describe('NotificationDispatcherService', () => {
     );
   });
 
+  it('shouldForwardTheSubjectProvidedByTheEmitterWithoutPersistingIt', async () => {
+    await dispatcher.dispatch({
+      userId: 'admin',
+      content: 'Contenu',
+      type: 'ANY_LABEL',
+      source: 'rabbitmq:notification_requested',
+      channels: ['EMAIL'],
+      subject: 'Objet',
+    });
+
+    expect(mockPublisher.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: 'Objet' }),
+    );
+    expect(mockNotificationsService.create.mock.calls[0][0]).not.toHaveProperty('subject');
+  });
+
   it('shouldNeverPublishAJobForTheImplicitInAppChannel', async () => {
     await dispatcher.dispatch({
       userId: 'user-123',

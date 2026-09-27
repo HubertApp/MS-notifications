@@ -11,6 +11,8 @@ export interface DispatchNotificationParams extends CreateNotificationParams {
   // Jamais exposé côté GraphQL, voir ARCHITECTURE.md §4.
   recipientEmail?: string;
   recipientDisabledChannels?: string[];
+  // Objet fourni par l'emetteur, transporte jusqu'au canal sans etre persiste.
+  subject?: string;
 }
 
 // Persiste puis publie un job par canal (voir ARCHITECTURE.md §5).
@@ -28,6 +30,7 @@ export class NotificationDispatcherService {
       channels: requestedTypes = [],
       recipientEmail,
       recipientDisabledChannels,
+      subject,
       ...createParams
     } = params;
 
@@ -43,6 +46,7 @@ export class NotificationDispatcherService {
         type: notification.type,
         channelType,
         email: recipientEmail,
+        subject,
         disabledChannels: recipientDisabledChannels ?? [],
       });
     }

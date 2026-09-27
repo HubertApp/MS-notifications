@@ -5,6 +5,8 @@ import { USER_CREATED_PATTERN } from './dto/user-created.event';
 import type { UserCreatedEvent } from './dto/user-created.event';
 import { USER_DELETED_PATTERN } from './dto/user-deleted.event';
 import type { UserDeletedEvent } from './dto/user-deleted.event';
+import { NOTIFICATION_REQUESTED_PATTERN } from './dto/notification-requested.event';
+import type { NotificationRequestedEvent } from './dto/notification-requested.event';
 
 @Controller()
 export class NotificationsController {
@@ -71,6 +73,61 @@ export class NotificationsController {
       triggeredBy: 'ms-user',
       disabledChannels: data?.disabledChannels ?? [],
     });
+  }
+
+  @EventPattern(NOTIFICATION_REQUESTED_PATTERN)
+  async handleNotificationRequested(
+    @Payload() data: NotificationRequestedEvent,
+  ): Promise<void> {
+    // Passe-plat : destinataire, objet, contenu et canaux viennent de
+    // l'emetteur, rien n'est decide ici.
+    const userId = data?.user_id;
+    const channels = data?.channels ?? [];
+
+    this.logger.log(
+      `Event ${NOTIFICATION_REQUESTED_PATTERN} reçu (triggered_by=${
+        data?.triggered_by ?? 'inconnu'
+      }, type=${data?.type ?? 'inconnu'}, user_id=${userId ?? 'inconnu'}).`,
+    );
+
+    if (!userId || !data?.content || !data?.type || channels.length === 0) {
+      this.logger.warn(
+        `Event ${NOTIFICATION_REQUESTED_PATTERN} ignoré : user_id, content, type et/ou channels manquant dans le payload.`,
+      );
+      return;
+    }
+
+    // Aucune adresse n'est resolue ici : sans recipient_email, le canal EMAIL
+    // ne pourrait rien livrer.
+    if (channels.includes('EMAIL') && !data.recipient_email) {
+      this.logger.warn(
+        `Event ${NOTIFICATION_REQUESTED_PATTERN} ignoré : canal EMAIL demandé sans recipient_email.`,
+      );
+      return;
+    }
+
+    try {
+      const notification = await this.dispatcher.dispatch({
+        userId,
+        content: data.content,
+        type: data.type,
+        source: `rabbitmq:${NOTIFICATION_REQUESTED_PATTERN}`,
+        triggeredBy: data.triggered_by,
+        channels,
+        recipientEmail: data.recipient_email ?? undefined,
+        recipientDisabledChannels: data.disabled_channels ?? [],
+        subject: data.subject ?? undefined,
+      });
+
+      this.logger.log(
+        `Notification ${notification.id} créée et job(s) ${channels.join(', ')} publié(s) pour user_id=${userId} (triggered_by=${data.triggered_by}, type=${data.type}).`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Échec du traitement de ${NOTIFICATION_REQUESTED_PATTERN} pour user_id=${userId} (triggered_by=${data.triggered_by}, type=${data.type}).`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
   }
 
   private async dispatchEmailNotification(params: {
