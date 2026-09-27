@@ -38,7 +38,6 @@ import {
   MailMessage,
   MailProvider,
 } from '../../src/mail/mail-provider.interface';
-import { UserLookupService } from '../../src/ms-notifications/user-lookup.service';
 import {
   FederatedAuthGuard,
   AuthenticatedUser,
@@ -83,7 +82,6 @@ describe('MS-notifications (intégration)', () => {
   let usersResolver: UsersResolver;
   let notificationsController: NotificationsController;
   let fakeMailProvider: FakeMailProvider;
-  let userLookupStub: { getRecipientInfo: jest.Mock };
   let guard: FederatedAuthGuard;
   let emittedJobs: { pattern: string; data: NotificationDeliveryJob }[];
 
@@ -91,12 +89,6 @@ describe('MS-notifications (intégration)', () => {
     mongod = await MongoMemoryServer.create();
 
     fakeMailProvider = new FakeMailProvider();
-    userLookupStub = {
-      getRecipientInfo: jest.fn().mockResolvedValue({
-        email: 'user@example.com',
-        disabledChannels: [],
-      }),
-    };
     emittedJobs = [];
 
     const fakeDeliveryClient = {
@@ -131,7 +123,6 @@ describe('MS-notifications (intégration)', () => {
           useValue: fakeFailedClient,
         },
         { provide: MAIL_PROVIDER, useValue: fakeMailProvider },
-        { provide: UserLookupService, useValue: userLookupStub },
         InAppNotificationChannel,
         EmailNotificationChannel,
         {
@@ -222,6 +213,7 @@ describe('MS-notifications (intégration)', () => {
         type: 'WELCOME',
         source: 'integration-test',
         channels: ['EMAIL'],
+        recipientEmail: 'user@example.com',
       });
 
       expect(fakeMailProvider.sent.length).toBe(before);
@@ -236,7 +228,6 @@ describe('MS-notifications (intégration)', () => {
       const { context, ack } = mockRmqContext();
       await deliveryConsumer.handleDelivery(emittedJobs[0].data, context);
 
-      expect(userLookupStub.getRecipientInfo).toHaveBeenCalledWith('user-E');
       expect(fakeMailProvider.sent.length).toBe(before + 1);
       expect(
         fakeMailProvider.sent[fakeMailProvider.sent.length - 1],
