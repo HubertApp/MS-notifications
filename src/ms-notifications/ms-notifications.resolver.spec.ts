@@ -45,7 +45,9 @@ describe('NotificationsResolver', () => {
 
     resolver = module.get<NotificationsResolver>(NotificationsResolver);
     service = module.get<NotificationsService>(NotificationsService);
-    dispatcher = module.get<NotificationDispatcherService>(NotificationDispatcherService);
+    dispatcher = module.get<NotificationDispatcherService>(
+      NotificationDispatcherService,
+    );
   });
 
   it('should be defined', () => {
@@ -67,7 +69,12 @@ describe('NotificationsResolver', () => {
     it('shouldAllowAUserToCreateANotificationForThemselves', () => {
       const user = asUser('user-123');
 
-      const result = resolver.create('user-123', 'Test Content', undefined, user);
+      const result = resolver.create(
+        'user-123',
+        'Test Content',
+        undefined,
+        user,
+      );
 
       expect(dispatcher.dispatch).toHaveBeenCalledWith({
         userId: 'user-123',

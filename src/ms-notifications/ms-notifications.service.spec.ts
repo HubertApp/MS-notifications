@@ -84,9 +84,24 @@ describe('NotificationsService', () => {
   });
 
   it('shouldReturnOnlyNotificationsForSpecificUser', async () => {
-    await service.create({ userId: 'user-A', content: 'Notif A1', type: 'MANUAL', source: 'test' });
-    await service.create({ userId: 'user-B', content: 'Notif B1', type: 'MANUAL', source: 'test' });
-    await service.create({ userId: 'user-A', content: 'Notif A2', type: 'MANUAL', source: 'test' });
+    await service.create({
+      userId: 'user-A',
+      content: 'Notif A1',
+      type: 'MANUAL',
+      source: 'test',
+    });
+    await service.create({
+      userId: 'user-B',
+      content: 'Notif B1',
+      type: 'MANUAL',
+      source: 'test',
+    });
+    await service.create({
+      userId: 'user-A',
+      content: 'Notif A2',
+      type: 'MANUAL',
+      source: 'test',
+    });
 
     const userANotifications = await service.findForUser('user-A');
 
@@ -100,7 +115,13 @@ describe('NotificationsService', () => {
   // entierement verte.
 
   const seed = (id: string, userId: string) => {
-    const doc = makeDoc({ _id: id, userId, content: 'x', type: 'MANUAL', source: 'test' });
+    const doc = makeDoc({
+      _id: id,
+      userId,
+      content: 'x',
+      type: 'MANUAL',
+      source: 'test',
+    });
     stored.push(doc);
     return doc;
   };
@@ -118,9 +139,9 @@ describe('NotificationsService', () => {
   it('shouldRefuseToMarkAsReadANotificationOwnedByAnotherUser', async () => {
     const doc = seed('notif-2', 'user-A');
 
-    await expect(service.markAsRead('notif-2', 'user-B', 'USER')).rejects.toThrow(
-      ForbiddenException,
-    );
+    await expect(
+      service.markAsRead('notif-2', 'user-B', 'USER'),
+    ).rejects.toThrow(ForbiddenException);
 
     // L'effet de bord ne doit pas avoir eu lieu non plus.
     expect(doc.isRead).toBe(false);
@@ -130,15 +151,19 @@ describe('NotificationsService', () => {
   it('shouldAllowAServiceCallerToMarkAnyNotificationAsRead', async () => {
     const doc = seed('notif-3', 'user-A');
 
-    const result = await service.markAsRead('notif-3', 'ms-notifications', 'SERVICE');
+    const result = await service.markAsRead(
+      'notif-3',
+      'ms-notifications',
+      'SERVICE',
+    );
 
     expect(result.isRead).toBe(true);
     expect(doc.save).toHaveBeenCalledTimes(1);
   });
 
   it('shouldThrowNotFoundWhenTheNotificationDoesNotExist', async () => {
-    await expect(service.markAsRead('inconnue', 'user-A', 'USER')).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.markAsRead('inconnue', 'user-A', 'USER'),
+    ).rejects.toThrow(NotFoundException);
   });
 });

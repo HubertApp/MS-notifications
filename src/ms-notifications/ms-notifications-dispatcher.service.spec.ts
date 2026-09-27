@@ -36,7 +36,9 @@ describe('NotificationDispatcherService', () => {
       ],
     }).compile();
 
-    dispatcher = module.get<NotificationDispatcherService>(NotificationDispatcherService);
+    dispatcher = module.get<NotificationDispatcherService>(
+      NotificationDispatcherService,
+    );
   });
 
   it('shouldAlwaysPersistTheNotification', async () => {
@@ -67,6 +69,7 @@ describe('NotificationDispatcherService', () => {
       type: 'WELCOME',
       channelType: 'EMAIL',
       email: undefined,
+      disabledChannels: [],
     });
   });
 

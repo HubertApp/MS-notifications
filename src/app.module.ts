@@ -1,7 +1,10 @@
 // src/app.module.ts
 import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
-import { ApolloFederationDriver, ApolloFederationDriverConfig } from '@nestjs/apollo';
+import {
+  ApolloFederationDriver,
+  ApolloFederationDriverConfig,
+} from '@nestjs/apollo';
 import { MongooseModule } from '@nestjs/mongoose';
 import { NotificationsModule } from './ms-notifications/ms-notifications.module';
 
@@ -16,7 +19,8 @@ import { NotificationsModule } from './ms-notifications/ms-notifications.module'
     }),
     // Persistance des notifications.
     MongooseModule.forRoot(
-      process.env.MONGO_URL || 'mongodb://localhost:27017/hubertapp_notifications',
+      process.env.MONGO_URL ||
+        'mongodb://localhost:27017/hubertapp_notifications',
     ),
     NotificationsModule,
   ],

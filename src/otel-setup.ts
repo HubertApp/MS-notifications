@@ -4,7 +4,7 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 const sdk = new NodeSDK({
   instrumentations: [
     getNodeAutoInstrumentations({
-      '@opentelemetry/instrumentation-fs': { enabled: false }, 
+      '@opentelemetry/instrumentation-fs': { enabled: false },
     }),
   ],
 });
