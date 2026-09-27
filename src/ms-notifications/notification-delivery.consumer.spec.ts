@@ -85,10 +85,6 @@ describe('NotificationDeliveryConsumer', () => {
   });
 
   it('shouldAckAndSkipWhenTheChannelIsDisabledByUserPreferences', async () => {
-    mockUserLookup.getRecipientInfo.mockResolvedValue({
-      email: 'user@example.com',
-      disabledChannels: ['EMAIL'],
-    });
     const ctx = makeContext();
 
     await consumer.handleDelivery(

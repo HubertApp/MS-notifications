@@ -69,6 +69,7 @@ describe('NotificationDispatcherService', () => {
       type: 'WELCOME',
       channelType: 'EMAIL',
       email: undefined,
+      disabledChannels: [],
     });
   });
 
